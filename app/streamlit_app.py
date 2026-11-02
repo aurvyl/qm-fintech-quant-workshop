@@ -146,7 +146,7 @@ def risk_rules_tab(cost_bps: float) -> None:
     else:
         plan = decision["plan"] or {}
         changes = ", ".join(f"{t} {w:.0%}" for t, w in sorted(plan.items(), key=lambda kv: -kv[1]))
-        st.warning(f"{' '.join(decision['reasons'])} The rotate rule would hold: {changes or 'no passing plan, so it holds'}.")
+        st.warning(f"{' '.join(decision['reasons'])} The rotate rule would move to: {changes or 'no passing plan, so it holds'}.")
 
 
 @st.cache_data
