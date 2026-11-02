@@ -31,6 +31,8 @@ Led by **Adnan Salehin** (Lead SWE & VP, JPMorgan) · Organised by **QM FinTech 
 | `02_rsi_mean_reversion` | A second strategy: buy the dip, sell the rip | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/02_rsi_mean_reversion.ipynb) |
 | `03_compare_with_library` | The same strategy in backtesting.py | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/03_compare_with_library.ipynb) |
 | `04_project_trading_dashboard` | **Take-home project:** build your own trading dashboard and run it on your computer ([details](projects/trading_dashboard/)) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/04_project_trading_dashboard.ipynb) |
+| `05_portfolio_risk_rules` | Portfolios with weights, sector rotation, dual momentum, and risk rules in plain words: drawdown limits, Value at Risk, hold vs sell everything vs rotate through 2020 and 2022 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/05_portfolio_risk_rules.ipynb) |
+| `06_ai_risk_agent` | **An AI agent that trades, checked by maths:** a language model proposes trades, fixed code checks every one, and the backtest scores it. Runs offline without a key | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/06_ai_risk_agent.ipynb) |
 
 ## Workshop agenda (~1.5–2 hours)
 
@@ -40,6 +42,7 @@ Led by **Adnan Salehin** (Lead SWE & VP, JPMorgan) · Organised by **QM FinTech 
 | Build and backtest a moving-average crossover (`01`) | ~60 min |
 | Demo: the interactive app | ~10 min |
 | If time allows: RSI mean reversion (`02`) | remaining |
+| Follow-up session: risk rules (`05`) and the AI agent (`06`) | ~45 min each |
 | Q&A | ~10 min |
 
 ## Write your own strategy
@@ -66,6 +69,9 @@ Notebook `01` ends with a cell like this, ready to edit. To keep a strategy as a
 ```
 data/prices.csv        daily prices, 24 US ETFs & stocks, 2016 → 2026 (see data/README.md)
 backtester/            the engine: data loading, run_backtest, metrics, charts
+  portfolio.py         run_portfolio_backtest for several assets in chosen weights
+  risk.py              portfolio limits, Value at Risk, and a day-by-day replay that obeys them
+  agent.py             an AI risk manager whose every proposal passes the same checks
 strategies/            ma_crossover, rsi_mean_reversion, and template.py for your own
 notebooks/             the workshop, step by step
 app/streamlit_app.py   interactive backtester
@@ -80,6 +86,8 @@ tests/                 checks that the engine computes correctly (run: pytest)
 ## How the engine works (in one paragraph)
 
 `run_backtest` takes your daily positions, **shifts them by one day** (a decision made at today's close can only earn tomorrow's return — skipping this is the classic *look-ahead bias*), multiplies by the asset's daily returns, subtracts a trading cost whenever the position changes, and compounds the result from $10,000. Everything is compared with simply buying and holding. It deliberately leaves out slippage, borrowing fees for shorts, position sizing and multi-asset portfolios — those are exercises in [`docs/resources.md`](docs/resources.md).
+
+For several assets at once, `run_portfolio_backtest(closes, weights)` follows the same rules with **weights** (the share of money in each asset, the rest in cash), costs on every change of weight, and holdings that drift with prices between trades. `backtester/risk.py` turns limits such as *"never fall more than 15% from my peak"* into warning lines and replays a portfolio day by day under them; `backtester/agent.py` lets a language model propose the trades, but only the ones that pass the same fixed checks are made. Notebooks `05` and `06` walk through both.
 
 ## Optional: run it on your own laptop
 

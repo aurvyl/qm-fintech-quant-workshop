@@ -32,7 +32,13 @@ Roughly easy → hard. Each builds on the code in this repo.
 10. Add **slippage** (e.g. a fixed extra cost per trade) to `run_backtest`.
 11. Add a **borrowing fee** for short positions (e.g. 1% a year, charged for every day you hold `-1`). Short sellers pay this in real life.
 12. Add **position sizing**: allow positions between 0 and 1 (e.g. 0.5 = half invested).
-13. Make a **multi-asset** backtest: hold the 3 sector ETFs with the best 6-month return, rebalanced monthly.
+13. Make a **multi-asset** backtest: hold the 3 sector ETFs with the best 6-month return, rebalanced monthly. Notebook `05` builds this with `run_portfolio_backtest`; try other lookbacks and compare with `recent_period`.
+
+**Risk rules and AI agents** (notebooks `05` and `06`)
+14. **Your own risk manager:** write a function that takes the day's `context` and returns weights, and beat `rotate_manager` on Sharpe without more days over the daily limit.
+15. **A cheaper agent:** only ask the AI model when `risk.unusual_moves` shows a z-score below -3. How many calls do you save, and does the result change?
+16. **The look-ahead test:** run the Gemini agent with `anonymous=True` and without. If the named run is much better, what does that tell you?
+17. **Audit the explanations:** collect every `unsupported_numbers` flag across a replay. Which kinds of numbers does the model make up?
 
 ---
 

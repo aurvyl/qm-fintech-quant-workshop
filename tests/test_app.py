@@ -59,7 +59,7 @@ def test_metrics_explain_themselves():
 
 def test_overfitting_lab_compares_training_winner_with_test():
     at = run_app()
-    assert [tab.label for tab in at.tabs] == ["📊 Backtest", "🎯 Overfitting lab"]
+    assert [tab.label for tab in at.tabs] == ["📊 Backtest", "🎯 Overfitting lab", "🛡️ Risk rules"]
     (summary,) = at.tabs[1].info
     assert "best settings on 2016–2021" in summary.value
     assert " of 38**" in summary.value  # 38 valid fast < slow pairs in the grid
@@ -72,3 +72,15 @@ def test_overfitting_lab_still_shows_when_backtest_settings_are_invalid():
     at.run()
     assert not at.exception
     assert len(at.tabs[1].info) == 1
+
+
+def test_risk_rules_tab_waits_for_the_toggle_then_compares_three_portfolios():
+    at = run_app()
+    risk_tab = at.tabs[2]
+    assert any("Run the replay" in info.value for info in risk_tab.info)
+    at.toggle(key="risk_run").set_value(True)
+    at.run(timeout=180)
+    assert not at.exception
+    tables = [frame.value for frame in at.tabs[2].dataframe]
+    assert list(tables[0].columns) == ["Buy & hold", "Sell everything", "Rotate"]
+    assert len(at.tabs[2].warning) + len(at.tabs[2].success) == 1

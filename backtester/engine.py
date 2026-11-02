@@ -43,6 +43,7 @@ def run_backtest(
     positions: pd.Series,
     cost_bps: float = 5.0,
     start_cash: float = 10_000.0,
+    cash_rate: float = 0.0,
 ) -> BacktestResult:
     """Simulate trading `positions` on `prices`.
 
@@ -52,6 +53,8 @@ def run_backtest(
                 A plain list or numpy array also works if it has one value per price row.
     cost_bps:   trading cost in basis points (1 bp = 0.01%), charged on every position change.
     start_cash: starting portfolio value.
+    cash_rate:  yearly interest earned on days out of the market (0.04 = 4%). Default 0, as in the workshop.
+                Sharpe is then measured above this rate.
 
     Simplifications (good exercises to remove!): no borrowing fees for shorts,
     no slippage, always 100% in or out, one asset at a time.
@@ -83,6 +86,9 @@ def run_backtest(
 
     # 5. Strategy return each day = position held x asset return - costs.
     daily = held * asset_returns - costs
+    if cash_rate:
+        daily = daily + (1 - held.abs()) * ((1 + cash_rate) ** (1 / 252) - 1)
+        daily.iloc[0] = 0.0
 
     # 6. Grow the starting cash day by day. Day 0 has no return, so it stays at start_cash.
     equity = start_cash * (1 + daily).cumprod()
@@ -98,8 +104,8 @@ def run_backtest(
         positions=held,
         benchmark_equity=benchmark_equity,
         trades=trades,
-        metrics=compute_metrics(equity, returns, trades),
-        benchmark_metrics=compute_metrics(benchmark_equity, benchmark_returns),
+        metrics=compute_metrics(equity, returns, trades, risk_free_rate=cash_rate),
+        benchmark_metrics=compute_metrics(benchmark_equity, benchmark_returns, risk_free_rate=cash_rate),
     )
 
 

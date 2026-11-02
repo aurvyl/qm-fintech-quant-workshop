@@ -15,7 +15,10 @@ import streamlit as st
 
 from backtester import available_tickers, load_prices, run_backtest
 from backtester.metrics import format_metrics
+from backtester import risk
+from backtester.metrics import drawdown_series
 from backtester.plotting import plot_heatmap, plot_result, plot_signals
+from matplotlib.figure import Figure
 from strategies import ma_crossover, rsi_mean_reversion
 
 METRIC_HELP = {
@@ -31,6 +34,119 @@ METRIC_HELP = {
 TRAIN_END, TEST_START = "2021-12-31", "2022-01-01"
 LAB_FASTS = [10, 20, 30, 40, 50, 75, 100]
 LAB_SLOWS = [50, 100, 150, 200, 250, 300]
+
+
+RISK_PORTFOLIOS = {
+    "Big tech (AAPL, MSFT, AMZN, GOOGL, QQQ)": ["AAPL", "MSFT", "AMZN", "GOOGL", "QQQ"],
+    "Cyclical sectors (XLB, XLE, XLF, XLI, XLY)": ["XLB", "XLE", "XLF", "XLI", "XLY"],
+    "Single stocks (JPM, JNJ, PG, XOM, AAPL)": ["JPM", "JNJ", "PG", "XOM", "AAPL"],
+}
+RISK_CALM = ["TLT", "IEF", "GLD", "XLP", "XLU", "XLV"]
+RISK_START, RISK_END = "2019-06-01", "2023-12-31"
+
+
+@st.cache_data(show_spinner=False)
+def risk_prices(holdings: tuple[str, ...]) -> pd.DataFrame:
+    from backtester import load_closes
+
+    calm = [t for t in RISK_CALM if t not in holdings]
+    return load_closes(list(holdings) + calm, start=RISK_START, end=RISK_END).dropna()
+
+
+@st.cache_data(show_spinner=False)
+def risk_replay(holdings: tuple[str, ...], max_drawdown: float, max_daily_loss: float, cost_bps: float):
+    """Buy & hold, sell everything and rotate, replayed under the same limits."""
+    prices = risk_prices(holdings)
+    calm = [t for t in RISK_CALM if t not in holdings]
+    start = {t: 1 / len(holdings) for t in holdings}
+    limits = risk.Limits(max_drawdown, max_daily_loss)
+    managers = {"Buy & hold": None, "Sell everything": risk.cash_exit_manager, "Rotate": risk.rotate_manager}
+    return {
+        name: risk.run_guarded(prices, start, limits, manager=manager, calm=calm, cost_bps=cost_bps, name=name)
+        for name, manager in managers.items()
+    }
+
+
+def plot_guarded(results: dict, max_drawdown: float) -> Figure:
+    fig = Figure(figsize=(10, 6))
+    top, bottom = fig.subplots(2, 1, sharex=True, gridspec_kw={"height_ratios": [2, 1]})
+    for result in results.values():
+        top.plot(result.equity.index, result.equity, label=result.name)
+        bottom.plot(result.equity.index, drawdown_series(result.equity) * 100, label=result.name)
+    bottom.axhline(-max_drawdown * 100, color="red", linestyle="--", label="Your limit")
+    top.set_title("Portfolio value ($)")
+    bottom.set_title("Drawdown (% below previous peak)")
+    for ax in (top, bottom):
+        ax.legend()
+        ax.grid(alpha=0.3)
+    fig.tight_layout()
+    return fig
+
+
+def risk_rules_tab(cost_bps: float) -> None:
+    st.markdown(
+        "Set two rules for a whole portfolio, in plain words, and replay 2019 to 2023 (the Covid crash and the "
+        "2022 bear market) three ways: **do nothing**, **sell everything** at the first real loss, or **rotate** "
+        "5% at a time from the riskiest holdings into calmer assets (bonds, gold, steady sectors). "
+        "Notebook 05 explains every step; notebook 06 lets an AI model do the rotating, inside the same rules."
+    )
+    left, middle, right = st.columns(3)
+    portfolio = left.selectbox("Portfolio (equal parts)", list(RISK_PORTFOLIOS))
+    max_drawdown = middle.slider("Never fall more than (% from the peak)", 5, 30, 15) / 100
+    max_daily_loss = right.slider("Never lose more than (% in one day)", 1, 6, 3) / 100
+    lines = risk.lines_from_limits(risk.Limits(max_drawdown, max_daily_loss))
+    st.caption(
+        f"Warning lines: rotate at a {lines.rotate_at:.1%} fall, cut hard at {lines.emergency_at:.1%}, and keep the "
+        f"99% one-day Value at Risk under {lines.var_budget:.1%}. Uses the trading cost from the sidebar."
+    )
+    holdings = tuple(RISK_PORTFOLIOS[portfolio])
+    if not st.toggle("Run the replay (about 20 seconds the first time)", key="risk_run"):
+        st.info("Switch on **Run the replay** to see the three portfolios side by side.")
+        return
+    with st.spinner("Replaying 1,100 trading days three times..."):
+        results = risk_replay(holdings, max_drawdown, max_daily_loss, cost_bps)
+
+    st.subheader("Three ways to react")
+    st.dataframe(risk.compare(list(results.values())))
+    st.pyplot(plot_guarded(results, max_drawdown))
+    st.caption(
+        "No rule keeps a portfolio exactly inside its limit: decisions are made at the close, trades fill a day "
+        "later, prices gap, and in 2022 bonds fell with stocks. Limits are targets, not guarantees."
+    )
+
+    st.subheader("Inside the crises")
+    st.dataframe(risk.crisis_table({name: r.equity for name, r in results.items()}))
+
+    st.subheader("Every decision the rotate rule made")
+    log = results["Rotate"].log.copy()
+    log["date"] = pd.to_datetime(log["date"]).dt.date
+    st.dataframe(log[["date", "trigger", "reasons", "action"]], hide_index=True)
+
+    st.subheader("What if?")
+    prices = risk_prices(holdings)
+    shock_col, day_col, size_col = st.columns(3)
+    shocked_ticker = shock_col.selectbox("Pretend this holding crashed", holdings)
+    shock_day = day_col.date_input(
+        "On this day", value=pd.Timestamp("2021-06-15").date(),
+        min_value=prices.index[61].date(), max_value=prices.index[-1].date(),
+    )
+    size = size_col.slider("By (%)", 5, 40, 20)
+    day = prices.index[prices.index.searchsorted(pd.Timestamp(shock_day))]
+    start = {t: 1 / len(holdings) for t in holdings}
+    calm = [t for t in RISK_CALM if t not in holdings]
+    decision = risk.decide_on(
+        risk.what_if(prices, day, {shocked_ticker: -size / 100}), start, day,
+        risk.Limits(max_drawdown, max_daily_loss), calm=calm,
+    )
+    if decision["trigger"] is None:
+        st.success(
+            f"On {day:%Y-%m-%d} the portfolio would have moved {decision['today_return']:.1%}. "
+            "No line crossed, so nothing would trade."
+        )
+    else:
+        plan = decision["plan"] or {}
+        changes = ", ".join(f"{t} {w:.0%}" for t, w in sorted(plan.items(), key=lambda kv: -kv[1]))
+        st.warning(f"{' '.join(decision['reasons'])} The rotate rule would hold: {changes or 'no passing plan, so it holds'}.")
 
 
 @st.cache_data
@@ -102,6 +218,7 @@ with st.expander("📖 New here? How to use this app"):
 3. **Compare with buy & hold.** The big numbers are the strategy; the grey labels underneath are what simply
    buying and holding the same ticker did over the same dates. Hover the **?** next to a name for what it means.
 4. **Open the 🎯 Overfitting lab tab** to see why the "best" settings on past data often disappoint later.
+5. **Open the 🛡️ Risk rules tab** to set limits for a whole portfolio and replay the Covid crash and 2022.
 """
     )
 
@@ -124,11 +241,14 @@ with st.sidebar:
     first_day, last_day = full_history.index[0].date(), full_history.index[-1].date()
     dates = st.date_input("Date range", value=(first_day, last_day), min_value=first_day, max_value=last_day)
 
-backtest_tab, lab_tab = st.tabs(["📊 Backtest", "🎯 Overfitting lab"])
+backtest_tab, lab_tab, risk_tab = st.tabs(["📊 Backtest", "🎯 Overfitting lab", "🛡️ Risk rules"])
 
 # The lab is drawn first: the backtest tab may stop early (st.stop) on invalid settings.
 with lab_tab:
     overfitting_lab(ticker, cost_bps)
+
+with risk_tab:
+    risk_rules_tab(cost_bps)
 
 with backtest_tab:
     if len(dates) != 2:
