@@ -33,6 +33,7 @@ Led by **Adnan Salehin** (Lead SWE & VP, JPMorgan) · Organised by **QM FinTech 
 | `04_project_trading_dashboard` | **Take-home project:** build your own trading dashboard and run it on your computer ([details](projects/trading_dashboard/)) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/04_project_trading_dashboard.ipynb) |
 | `05_portfolio_risk_rules` | Portfolios with weights, sector rotation, dual momentum, and risk rules in plain words: drawdown limits, Value at Risk, hold vs sell everything vs rotate through 2020 and 2022 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/05_portfolio_risk_rules.ipynb) |
 | `06_ai_risk_agent` | **An AI agent that trades, checked by maths:** a language model proposes trades, fixed code checks every one, and the backtest scores it. Runs offline without a key | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/06_ai_risk_agent.ipynb) |
+| `07_alpha_competition` | **Alpha, beta and the alpha competition:** how much of a return is just the market, why a big alpha can be luck, then write your own strategy and compete for the best alpha on data it was not built on ([interactive explainer](https://kolyamkl.github.io/qm-fintech-quant-workshop/alpha-beta.html)) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/07_alpha_competition.ipynb) |
 
 ## Workshop agenda (~1.5–2 hours)
 
@@ -43,6 +44,7 @@ Led by **Adnan Salehin** (Lead SWE & VP, JPMorgan) · Organised by **QM FinTech 
 | Demo: the interactive app | ~10 min |
 | If time allows: RSI mean reversion (`02`) | remaining |
 | Follow-up session: risk rules (`05`) and the AI agent (`06`) | ~45 min each |
+| Alpha, beta and the alpha competition (`07`) | ~45 min, then the competition runs until the deadline |
 | Q&A | ~10 min |
 
 ## Write your own strategy
@@ -72,6 +74,9 @@ backtester/            the engine: data loading, run_backtest, metrics, charts
   portfolio.py         run_portfolio_backtest for several assets in chosen weights
   risk.py              portfolio limits, Value at Risk, and a day-by-day replay that obeys them
   agent.py             an AI risk manager whose every proposal passes the same checks
+  alpha.py             alpha and beta by regression, and the alpha competition scorer
+competition/           house strategies, entries/ (one file per team), leaderboard.md
+scripts/leaderboard.py scores every entry the same way and writes competition/leaderboard.md
 strategies/            ma_crossover, rsi_mean_reversion, and template.py for your own
 notebooks/             the workshop, step by step
 app/streamlit_app.py   interactive backtester
