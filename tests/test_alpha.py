@@ -142,3 +142,12 @@ def test_leaderboard_script_refuses_entries_that_load_their_own_data(tmp_path):
     )
     [(name, fn, problem)] = load_entries(tmp_path)
     assert fn is None and "shift(-" in problem
+
+
+def test_explainer_embeds_the_interactive_page():
+    pytest.importorskip("IPython")
+    from backtester.alpha import explainer
+
+    shown = explainer(height=900).data
+    assert shown.startswith("<iframe srcdoc=") and "height:900px" in shown
+    assert "Move the line" in shown and "&lt;script&gt;" in shown

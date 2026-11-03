@@ -14,6 +14,7 @@ and ranks on a test period the strategy was not built on. See notebook 07.
 
 import hashlib
 import math
+import warnings
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -125,6 +126,28 @@ def alpha_beta(strategy_daily: pd.Series, market_daily: pd.Series, cash_rate: fl
     alpha_se = math.sqrt(noise * (1 / n + x_mean**2 / spread))
     alpha_t = alpha / alpha_se if alpha_se > 1e-12 else float("nan")
     return AlphaBeta(alpha=alpha, beta=beta, alpha_t=alpha_t, r_squared=r_squared, months=n, points=points)
+
+
+EXPLAINER_PATH = DATA_PATH.parent.parent / "docs" / "alpha-beta.html"
+EXPLAINER_URL = "https://kolyamkl.github.io/qm-fintech-quant-workshop/alpha-beta.html"
+
+
+def explainer(height: int = 1500):
+    """The interactive alpha and beta explainer (docs/alpha-beta.html), shown inside the notebook."""
+    from html import escape
+
+    from IPython.display import HTML
+
+    if not EXPLAINER_PATH.exists():
+        return HTML(f'<p>Explainer not found here. Open it in your browser: <a href="{EXPLAINER_URL}">{EXPLAINER_URL}</a></p>')
+    page = escape(EXPLAINER_PATH.read_text(encoding="utf-8"), quote=True)
+    frame = (
+        f'<iframe srcdoc="{page}" title="Alpha and beta explainer" '
+        f'style="width:100%;max-width:820px;height:{int(height)}px;border:1px solid #dfe3ea;border-radius:12px"></iframe>'
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        return HTML(frame)
 
 
 def data_fingerprint() -> str:
@@ -291,6 +314,6 @@ def format_leaderboard(table: pd.DataFrame) -> pd.DataFrame:
 
 __all__ = [
     "AlphaBeta", "CASH_RATE", "COST_BPS", "DEV_PERIOD", "MARKET", "MIN_MONTHS", "Score", "TEST_PERIOD",
-    "alpha_beta", "competition_closes", "daily_cash_return", "data_fingerprint", "find_lookahead",
+    "alpha_beta", "competition_closes", "daily_cash_return", "data_fingerprint", "explainer", "find_lookahead",
     "format_leaderboard", "leaderboard", "monthly_cash_return", "monthly_returns", "score",
 ]
