@@ -164,3 +164,25 @@ def test_gemini_retries_a_rate_limit_then_gives_a_clear_error(monkeypatch):
     with pytest.raises(RuntimeError, match="HTTP 429"):
         agent.gemini("key", seconds_between_calls=0)("hello")
     assert len(calls) == 3
+
+
+def test_workshop_model_sends_the_code_and_shows_the_server_message(monkeypatch):
+    seen = {}
+
+    def fake_urlopen(request, timeout):
+        seen["url"], seen["body"] = request.full_url, json.loads(request.data)
+        return io.BytesIO(json.dumps({"text": "answer"}).encode())
+
+    monkeypatch.setattr(agent.urllib.request, "urlopen", fake_urlopen)
+    ask = agent.workshop_model("https://example.test/ask", "alpha-code-1", seconds_between_calls=0)
+    assert ask("hello") == "answer"
+    assert seen["body"] == {"code": "alpha-code-1", "prompt": "hello"}
+
+    def denied(request, timeout):
+        raise agent.urllib.error.HTTPError(request.full_url, 403, "Forbidden", {}, io.BytesIO(json.dumps({"error": "That access code is not valid."}).encode()))
+
+    monkeypatch.setattr(agent.urllib.request, "urlopen", denied)
+    with pytest.raises(RuntimeError, match="access code is not valid"):
+        ask("hello")
+    with pytest.raises(ValueError):
+        agent.workshop_model("", "code")

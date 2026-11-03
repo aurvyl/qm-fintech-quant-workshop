@@ -8,8 +8,8 @@ weights plus a short explanation, as JSON. Our code then:
   3. if nothing passes, holds;
   4. checks that every number in the explanation really appears in the snapshot.
 
-ask is any function: prompt text in, model reply text out. gemini() builds one for Google's
-free Gemini API. offline_model() is a stand-in that is NOT AI: it answers with the rule-based
+ask is any function: prompt text in, model reply text out. workshop_model() builds one for the
+workshop's own server (an access code, no key), and gemini() one for Google's free Gemini API. offline_model() is a stand-in that is NOT AI: it answers with the rule-based
 plan, so the whole loop runs in class with no key and no internet. cached() stores every
 reply on disk by its prompt, so a backtest gives the same answer twice and costs nothing to rerun.
 """
@@ -209,6 +209,43 @@ class AgentManager:
         return pd.DataFrame(rows, columns=["date", "trigger", "attempts", "outcome", "explanation", "unsupported numbers"])
 
 
+def _paced(seconds_between_calls: float, name: str, post):
+    """Wrap post(prompt) so calls are spaced out and a busy reply is retried at most twice."""
+    last_call = [0.0]
+
+    def ask(prompt: str) -> str:
+        for attempt in range(MAX_RETRIES + 1):
+            wait = last_call[0] + seconds_between_calls - time.monotonic()
+            if wait > 0:
+                time.sleep(wait)
+            last_call[0] = time.monotonic()
+            try:
+                return post(prompt)
+            except urllib.error.HTTPError as error:
+                if error.code not in RETRY_STATUSES or attempt == MAX_RETRIES:
+                    raise RuntimeError(_http_message(name, error)) from None
+                time.sleep(10 * 2**attempt)
+        raise RuntimeError(f"{name} did not answer.")
+
+    return ask
+
+
+def _http_message(name: str, error) -> str:
+    try:
+        detail = json.loads(error.read().decode()).get("error")
+    except Exception:
+        detail = None
+    if isinstance(detail, str) and detail:
+        return f"{name}: {detail}"
+    return f"{name} answered with HTTP {error.code}. Check the key or access code."
+
+
+def _post_json(url: str, payload: dict, headers: dict) -> dict:
+    request = urllib.request.Request(url, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json", **headers})
+    with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
+        return json.load(response)
+
+
 def gemini(api_key: str, model: str = GEMINI_MODEL, temperature: float = 0.0, seconds_between_calls: float = 4.0):
     """An `ask` function for Google's Gemini API. Get a free key at https://aistudio.google.com/apikey.
 
@@ -220,31 +257,30 @@ def gemini(api_key: str, model: str = GEMINI_MODEL, temperature: float = 0.0, se
     if not api_key:
         raise ValueError("No API key given. Use offline_model() to run without one.")
     url = GEMINI_URL.format(model=model)
-    last_call = [0.0]
 
-    def ask(prompt: str) -> str:
-        body = json.dumps({
+    def post(prompt: str) -> str:
+        reply = _post_json(url, {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": temperature, "responseMimeType": "application/json"},
-        }).encode()
-        headers = {"Content-Type": "application/json", "x-goog-api-key": api_key}
-        for attempt in range(MAX_RETRIES + 1):
-            wait = last_call[0] + seconds_between_calls - time.monotonic()
-            if wait > 0:
-                time.sleep(wait)
-            last_call[0] = time.monotonic()
-            try:
-                request = urllib.request.Request(url, data=body, headers=headers)
-                with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
-                    reply = json.load(response)
-                return reply["candidates"][0]["content"]["parts"][0]["text"]
-            except urllib.error.HTTPError as error:
-                if error.code not in RETRY_STATUSES or attempt == MAX_RETRIES:
-                    raise RuntimeError(f"Gemini answered with HTTP {error.code}. Check the key and the model name.") from None
-                time.sleep(10 * 2**attempt)
-        raise RuntimeError("Gemini did not answer.")
+        }, {"x-goog-api-key": api_key})
+        return reply["candidates"][0]["content"]["parts"][0]["text"]
 
-    return ask
+    return _paced(seconds_between_calls, "Gemini", post)
+
+
+def workshop_model(url: str, code: str, seconds_between_calls: float = 1.0):
+    """An `ask` function for the workshop's own model server. Your organiser gives you the URL and a code.
+
+    The code is not a key: it only lets you use the workshop server, which holds the real key and
+    sets the model and its limits. Keep it in Colab Secrets as WORKSHOP_CODE all the same.
+    """
+    if not url or not code:
+        raise ValueError("No workshop URL or access code given. Use offline_model() to run without one.")
+
+    def post(prompt: str) -> str:
+        return _post_json(url, {"code": code, "prompt": prompt}, {})["text"]
+
+    return _paced(seconds_between_calls, "The workshop model", post)
 
 
 def offline_model():
