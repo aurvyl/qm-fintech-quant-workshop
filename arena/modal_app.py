@@ -17,6 +17,7 @@ image = (
     .pip_install("pandas==3.0.6", "numpy==2.5.3", "matplotlib==3.11.2", "fastapi==0.162.0", "uvicorn==0.54.0")
     .add_local_python_source("backtester", "arena")
     .add_local_file(ROOT / "data" / "prices.csv", "/root/data/prices.csv")
+    .add_local_dir(ROOT / "arena" / "static", "/root/arena/static")
 )
 app = modal.App("workshop-arena", image=image)
 saved = modal.Dict.from_name("workshop-arena-state", create_if_missing=True)
