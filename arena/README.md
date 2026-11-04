@@ -13,7 +13,7 @@ A web page where teams paste guidance for the AI risk manager and compete on one
 
 - The model sees dates and tickers hidden (`ASSET_A`, `ASSET_B`, ...). Tickers in a team's guidance are hidden the same way.
 - Every proposal still passes `check_plan`, the same fixed gate as the rule-based manager. Guidance cannot change the rules.
-- Each entry has a cap of 120 model calls and 10 minutes. Past the cap the portfolio simply holds.
+- Each entry has a cap of 120 model calls and 20 minutes. Past the cap the portfolio simply holds.
 - Guidance and decision logs are private to the team until the organiser reveals them.
 - The arena reaches the model through the workshop model server, so the key, the model and its limits stay there.
 - The leaderboard shows the bars to beat: buy and hold, the rule-based rotation and the market.
