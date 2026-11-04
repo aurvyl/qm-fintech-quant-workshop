@@ -227,9 +227,13 @@ def test_progress_is_reported_and_kept_private():
     assert seen and seen[-1]["calls"] <= 6 and 0 <= seen[-1]["percent"] <= 100
     assert seen[-1]["decisions"] == len(seen)
     assert seen[-1]["feed"][0]["date"] == seen[-1]["day"]
+    curve = seen[-1]["curve"]
+    assert curve and curve[0][1] > 0 and curve[0][0] >= arena.SCORE_START
+    passed = [d for d in seen[-1]["feed"] if d["outcome"] == "plan passed"]
+    assert all(abs(sum(d["weights"].values()) - 1) < 0.06 for d in passed)
 
 
 def test_public_view_hides_latest_reasoning_from_others():
-    entry = {"id": 1, "team": "t", "status": "running", "progress": {"percent": 10, "feed": ["secret idea"], "holding": {"GLD": 0.2}}}
+    entry = {"id": 1, "team": "t", "status": "running", "progress": {"percent": 10, "feed": ["secret idea"], "holding": {"GLD": 0.2}, "curve": [["2023-01-06", 100.0]]}}
     assert public_view(entry)["progress"] == {"percent": 10}
     assert public_view(entry, include_guidance=True)["progress"]["feed"] == ["secret idea"]

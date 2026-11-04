@@ -197,6 +197,7 @@ def build_context(day, weights: pd.Series, returns: pd.DataFrame, nav: pd.Series
         "limits": {"var_budget": lines.var_budget, "rotate_at": lines.rotate_at, "emergency_at": lines.emergency_at},
         "_returns": returns,
         "_lines": lines,
+        "_nav": nav,
     }
 
 

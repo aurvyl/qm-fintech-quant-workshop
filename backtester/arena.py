@@ -22,6 +22,7 @@ from functools import lru_cache
 import pandas as pd
 
 from . import risk
+from .risk import RISK_LOOKBACK
 from .agent import AgentManager
 from .alpha import CASH_RATE, MARKET, T_STAT_WIN, alpha_beta
 from .data import load_closes
@@ -142,12 +143,18 @@ def _trades(before: dict, after: dict) -> list:
     return [move for move in moves if abs(move[1]) >= TRADE_THRESHOLD]
 
 
+def _live_curve(nav, index: pd.DatetimeIndex) -> list:
+    dates = index[RISK_LOOKBACK : RISK_LOOKBACK + len(nav)]
+    equity = pd.Series(list(nav), index=dates)
+    return _curve(equity)
+
+
 def _reporter(agent, limited, prices: pd.DataFrame, progress):
     first, last = prices.index[0], prices.index[-1]
     span = max((last - first).days, 1)
     state = {"holding": dict(START_WEIGHTS), "feed": []}
 
-    def report(entry: dict) -> None:
+    def report(entry: dict, context: dict) -> None:
         day = pd.Timestamp(entry["date"])
         done = min(max((day - first).days / span, 0.0), 1.0)
         plan = entry["plan"]
@@ -156,6 +163,7 @@ def _reporter(agent, limited, prices: pd.DataFrame, progress):
         item = {
             "date": f"{day:%Y-%m-%d}", "trigger": entry["trigger"], "attempts": len(entry["attempts"]),
             "outcome": "plan passed" if plan else "held",
+            "weights": {name: round(weight, 4) for name, weight in plan.items() if weight > 0} if plan else None,
             "trades": _trades(state["holding"], plan) if plan else [],
             "rejected": reasons[:3],
             "explanation": unmask_text(entry["explanation"])[:300] if plan else "",
@@ -169,6 +177,7 @@ def _reporter(agent, limited, prices: pd.DataFrame, progress):
             "rejected_attempts": sum(1 for e in agent.log for a in e["attempts"] if not a.get("passed", False)),
             "calls": limited.calls, "max_calls": limited.max_calls,
             "holding": dict(state["holding"]), "feed": list(state["feed"]),
+            "curve": _live_curve(context["_nav"], prices.index) if pd.Timestamp(context["date"]) >= pd.Timestamp(SCORE_START) else [],
         })
 
     return report

@@ -10,7 +10,7 @@ import threading
 import time
 from pathlib import Path
 
-PRIVATE_PROGRESS = ("feed", "holding")
+PRIVATE_PROGRESS = ("feed", "holding", "curve")
 PUBLIC_FIELDS = ("id", "team", "status", "created", "started", "finished", "error")
 
 

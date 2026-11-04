@@ -162,7 +162,7 @@ class AgentManager:
     anonymous:    hide dates and ticker names from the model (look-ahead experiment).
     max_attempts: how many proposals the model gets before we hold.
     log:          one entry per decision: the attempts, the checks, the explanation and any made-up numbers.
-    on_decision:  optional function(entry), called after each decision.
+    on_decision:  optional function(entry, context), called after each decision.
     """
 
     ask: object
@@ -198,7 +198,7 @@ class AgentManager:
             conversation = prompt + "\n\n" + RETRY.format(reasons="\n".join(f"- {r}" for r in check.reasons))
         self.log.append(entry)
         if self.on_decision:
-            self.on_decision(entry)
+            self.on_decision(entry, context)
         return entry["plan"]
 
     def decisions(self) -> pd.DataFrame:

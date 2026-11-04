@@ -62,6 +62,7 @@ canvas { width: 100%; height: 280px; display: block; }
 .run:first-child { border-top: 0; }
 .bar { height: 8px; background: var(--bar); border-radius: 4px; overflow: hidden; margin: 6px 0; }
 .bar > span { display: block; height: 100%; background: var(--accent); transition: width 0.4s; }
+.holdchart { width: 100%; height: 90px; margin-top: 8px; display: block; }
 .feed { max-height: 320px; overflow: auto; margin-top: 6px; border: 1px solid var(--line); border-radius: 6px; }
 .feeditem { padding: 8px 10px; border-top: 1px solid var(--line); font-size: 0.85rem; }
 .feeditem:first-child { border-top: 0; }
@@ -188,10 +189,13 @@ function drawChart() {
   const width = canvas.clientWidth, height = canvas.clientHeight;
   canvas.width = width * ratio; canvas.height = height * ratio;
   const g = canvas.getContext("2d"); g.scale(ratio, ratio); g.clearRect(0, 0, width, height);
-  const series = [
+  let series = [
     ...state.baselines.map((b, i) => ({ name: b.name, bar: true, dash: [[6, 4], [2, 3], [10, 3, 2, 3]][i % 3], data: curves[b.name] || [] })),
     ...picked.filter((n) => curves[n]).map((n, i) => ({ name: n, color: color(COLORS[i % 5]), data: curves[n] })),
-  ].filter((s) => s.data.length);
+  ];
+  const running = mine && mine.entries.find((e) => e.status === "running" && e.progress && e.progress.curve && e.progress.curve.length);
+  if (running) series.push({ name: `${mine.team || "Your run"} (live)`, color: color("--accent"), data: running.progress.curve, live: running.progress.feed });
+  series = series.filter((s) => s.data.length);
   const left = 40, bottom = 22, top = 8, right = 8;
   if (!series.length) return;
   const all = series.flatMap((s) => s.data.map((p) => p[1]));
@@ -212,12 +216,21 @@ function drawChart() {
     g.stroke();
   }
   g.setLineDash([]);
+  for (const s of series.filter((t) => t.live)) {
+    for (const d of s.live) {
+      const before = s.data.filter((p) => p[0] <= d.date); if (!before.length) continue;
+      const p = before[before.length - 1], held = d.outcome === "held";
+      g.beginPath(); g.arc(x(p[0]), y(p[1]), 4, 0, Math.PI * 2);
+      g.fillStyle = held ? color("--bad") : color("--good"); g.fill(); g.strokeStyle = color("--card"); g.lineWidth = 1.5; g.stroke();
+    }
+  }
   const legend = $("legend"); legend.replaceChildren();
   for (const s of series) {
     const item = document.createElement("span"); const dot = document.createElement("span");
     dot.className = "swatch"; dot.style.background = s.bar ? color("--muted") : s.color; item.appendChild(dot);
     item.appendChild(document.createTextNode(s.name)); legend.appendChild(item);
   }
+  if (running) { const note = document.createElement("span"); note.textContent = "Green dot: plan passed. Red dot: held."; legend.appendChild(note); }
 }
 
 async function refresh() {
@@ -243,6 +256,7 @@ async function loadMine(quiet) {
   } catch (e) { if (!quiet) show(e.message, true); return; }
   $("mine").hidden = !mine.entries.length;
   const runs = $("runs"); runs.replaceChildren();
+  const after = [];
   for (const entry of [...mine.entries].reverse()) {
     const div = document.createElement("div"); div.className = "run";
     const head = document.createElement("div");
@@ -267,6 +281,10 @@ async function loadMine(quiet) {
       div.appendChild(live);
       if (p && p.holding) { const hold = document.createElement("div"); hold.className = "live"; hold.textContent = `Holding now: ${Object.entries(p.holding).sort((x, y) => y[1] - x[1]).map(([n, w]) => `${n} ${Math.round(w * 100)}%`).join(", ") || "all cash"}`; div.appendChild(hold); }
       if (p && p.feed && p.feed.length) {
+        const holdCanvas = document.createElement("canvas"); holdCanvas.className = "holdchart"; holdCanvas.setAttribute("role", "img");
+        holdCanvas.setAttribute("aria-label", "Holdings after each decision, oldest on the left");
+        div.appendChild(holdCanvas); const holdLegend = document.createElement("div"); holdLegend.className = "live"; div.appendChild(holdLegend);
+        after.push(() => drawHoldings(holdCanvas, holdLegend, p.feed));
         const feed = document.createElement("div"); feed.className = "feed"; feed.setAttribute("aria-live", "polite");
         for (const d of p.feed) {
           const row = document.createElement("div"); row.className = "feeditem " + (d.outcome === "held" ? "held" : "passed");
@@ -293,9 +311,36 @@ async function loadMine(quiet) {
     }
     runs.appendChild(div);
   }
+  after.forEach((draw) => draw());
+  if (state) drawChart();
   const left = mine.attempts_left;
   if (!quiet) show(`${left} run${left === 1 ? "" : "s"} left for ${mine.team || "your team"}.`, false);
   $("run").disabled = !state.open || left <= 0 || mine.entries.some((e) => e.status === "queued" || e.status === "running");
+}
+
+const ASSET_ORDER = ["AAPL", "MSFT", "AMZN", "GOOGL", "QQQ", "TLT", "IEF", "GLD", "XLP", "XLU", "XLV"];
+function assetColor(name) { const i = Math.max(0, ASSET_ORDER.indexOf(name)); return `hsl(${(i * 67) % 360} 55% ${i % 2 ? 48 : 60}%)`; }
+
+function drawHoldings(canvas, legend, feed) {
+  const ratio = window.devicePixelRatio || 1, width = canvas.clientWidth, height = canvas.clientHeight;
+  canvas.width = width * ratio; canvas.height = height * ratio;
+  const g = canvas.getContext("2d"); g.scale(ratio, ratio); g.clearRect(0, 0, width, height);
+  const steps = [...feed].reverse().filter((d) => d.weights);
+  if (!steps.length) return;
+  const gap = 2, bar = Math.max(4, Math.min(28, (width - gap * steps.length) / steps.length)), used = new Set();
+  steps.forEach((d, i) => {
+    let top = height;
+    for (const name of ASSET_ORDER.filter((n) => d.weights[n])) {
+      used.add(name); const h = d.weights[name] * height;
+      g.fillStyle = assetColor(name); g.fillRect(i * (bar + gap), top - h, bar, h); top -= h;
+    }
+  });
+  legend.replaceChildren(document.createTextNode("Holdings after each decision, oldest on the left. "));
+  for (const name of ASSET_ORDER.filter((n) => used.has(n))) {
+    const item = document.createElement("span"); item.style.marginRight = "10px";
+    const dot = document.createElement("span"); dot.className = "swatch"; dot.style.background = assetColor(name); item.appendChild(dot);
+    item.appendChild(document.createTextNode(name)); legend.appendChild(item);
+  }
 }
 
 function show(text, error) { const m = $("msg"); m.textContent = text; m.className = "msg " + (error ? "error" : "ok"); }
