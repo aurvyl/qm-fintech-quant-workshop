@@ -125,6 +125,55 @@ def _score(result, prices: pd.DataFrame) -> dict:
     }
 
 
+FEED_LENGTH = 30
+TRADE_THRESHOLD = 0.005
+
+
+def unmask_text(text: str) -> str:
+    """Swap the names the model saw back for tickers, so a team can read its own run."""
+    for ticker, mask in masks().items():
+        text = re.sub(rf"\b{mask}\b", ticker, text)
+    return text
+
+
+def _trades(before: dict, after: dict) -> list:
+    names = sorted(set(before) | set(after))
+    moves = [[name, round(after.get(name, 0.0) - before.get(name, 0.0), 4)] for name in names]
+    return [move for move in moves if abs(move[1]) >= TRADE_THRESHOLD]
+
+
+def _reporter(agent, limited, prices: pd.DataFrame, progress):
+    first, last = prices.index[0], prices.index[-1]
+    span = max((last - first).days, 1)
+    state = {"holding": dict(START_WEIGHTS), "feed": []}
+
+    def report(entry: dict) -> None:
+        day = pd.Timestamp(entry["date"])
+        done = min(max((day - first).days / span, 0.0), 1.0)
+        plan = entry["plan"]
+        reasons = [reason for attempt in entry["attempts"] for reason in attempt.get("reasons", []) or [attempt.get("error")]
+                   if reason and not attempt.get("passed", False)]
+        item = {
+            "date": f"{day:%Y-%m-%d}", "trigger": entry["trigger"], "attempts": len(entry["attempts"]),
+            "outcome": "plan passed" if plan else "held",
+            "trades": _trades(state["holding"], plan) if plan else [],
+            "rejected": reasons[:3],
+            "explanation": unmask_text(entry["explanation"])[:300] if plan else "",
+        }
+        if plan:
+            state["holding"] = {name: weight for name, weight in plan.items() if weight > 0}
+        state["feed"] = ([item] + state["feed"])[:FEED_LENGTH]
+        progress({
+            "day": item["date"], "percent": int(round(done * 100)), "decisions": len(agent.log),
+            "plans_passed": sum(1 for e in agent.log if e["plan"]),
+            "rejected_attempts": sum(1 for e in agent.log for a in e["attempts"] if not a.get("passed", False)),
+            "calls": limited.calls, "max_calls": limited.max_calls,
+            "holding": dict(state["holding"]), "feed": list(state["feed"]),
+        })
+
+    return report
+
+
 def _replay(manager, name: str, prices: pd.DataFrame):
     return risk.run_guarded(prices[TECH + CALM], START_WEIGHTS, LIMITS, manager=manager, calm=CALM, name=name,
                             cash_rate=CASH_RATE)
@@ -153,16 +202,20 @@ def baselines(prices: pd.DataFrame | None = None) -> list[dict]:
 
 
 def run_entry(guidance: str, ask, prices: pd.DataFrame | None = None, max_calls: int = MAX_CALLS,
-              max_seconds: float = MAX_SECONDS) -> dict:
+              max_seconds: float = MAX_SECONDS, progress=None) -> dict:
     """Replay the arena with a student's guidance and return everything the leaderboard shows.
 
     ask: function(prompt) -> reply text. The result holds the scores, a weekly equity curve (100 on the
     first scored day), the agent's own checks (plans rejected, made-up numbers) and the first decisions.
+    progress: optional function(dict), called after each decision with the day reached, the share of the
+    replay done, the counts so far and the agent's latest explanation.
     """
     guidance = clean_instructions(guidance)
     prices = arena_prices() if prices is None else prices
     limited = Limited(ask, guidance, max_calls=max_calls, max_seconds=max_seconds)
     agent = AgentManager(ask=limited, anonymous=True)
+    if progress:
+        agent.on_decision = _reporter(agent, limited, prices, progress)
     result = _replay(agent, "Agent", prices)
     log = agent.log
     rejected = sum(1 for entry in log for attempt in entry["attempts"] if not attempt.get("passed", False))

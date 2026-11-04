@@ -103,7 +103,7 @@ def create_app(settings: Settings, run=run_entry, baseline_rows=None) -> FastAPI
         entry = store.get(entry_id)
         store.update(entry_id, status="running", started=time.time())
         try:
-            result = run(entry["guidance"], settings.ask)
+            result = run(entry["guidance"], settings.ask, progress=lambda p: store.set_progress(entry_id, p))
             store.update(entry_id, status="done", finished=time.time(), result=result)
         except Exception:
             LOG.exception("entry %s failed", entry_id)
@@ -166,7 +166,11 @@ def create_app(settings: Settings, run=run_entry, baseline_rows=None) -> FastAPI
     @app.get("/api/mine")
     def mine(request: Request, x_arena_code: str = Header(default="")):
         key = team_key(request, x_arena_code)
-        entries = [public_view(e, include_guidance=True) for e in store.entries_for(key)]
+        entries = []
+        for e in store.entries_for(key):
+            view = public_view(e, include_guidance=True)
+            view["queue_position"] = store.queue_position(e["id"])
+            entries.append(view)
         return {"team": store.team_name(key), "entries": entries, "attempts_left": settings.max_attempts - store.counted_for(key)}
 
     @app.post("/api/submit", status_code=202)

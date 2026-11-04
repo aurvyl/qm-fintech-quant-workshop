@@ -60,6 +60,14 @@ canvas { width: 100%; height: 280px; display: block; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.8rem; margin-top: 8px; }
 .run { border-top: 1px solid var(--line); padding: 10px 0; font-size: 0.9rem; }
 .run:first-child { border-top: 0; }
+.bar { height: 8px; background: var(--bar); border-radius: 4px; overflow: hidden; margin: 6px 0; }
+.bar > span { display: block; height: 100%; background: var(--accent); transition: width 0.4s; }
+.feed { max-height: 320px; overflow: auto; margin-top: 6px; border: 1px solid var(--line); border-radius: 6px; }
+.feeditem { padding: 8px 10px; border-top: 1px solid var(--line); font-size: 0.85rem; }
+.feeditem:first-child { border-top: 0; }
+.feeditem.held strong { color: var(--bad); }
+.feeditem.passed strong { color: var(--good); }
+.live { color: var(--muted); font-size: 0.85rem; }
 .run pre { white-space: pre-wrap; word-break: break-word; margin: 6px 0 0; font: inherit; color: var(--muted); }
 .decisions { font-size: 0.85rem; margin-top: 8px; }
 .decisions div { padding: 6px 0; border-top: 1px solid var(--line); }
@@ -167,7 +175,7 @@ function renderBoard() {
     body.appendChild(tr);
   }
   const waiting = state.waiting.filter((w) => w.status === "queued" || w.status === "running");
-  $("waiting").textContent = waiting.length ? `Running now: ${waiting.map((w) => w.team).join(", ")}` : "";
+  $("waiting").textContent = waiting.length ? `In the arena now: ${waiting.map((w) => w.status === "running" && w.percent !== undefined && w.percent !== null ? `${w.team} (${w.percent}%)` : `${w.team} (${w.status})`).join(", ")}` : "";
 }
 
 function toggle(name) {
@@ -242,6 +250,36 @@ async function loadMine(quiet) {
     const label = entry.status === "done" ? `Run ${entry.id}: alpha ${pct(m.alpha_annual, 1, true)} a year, t-stat ${m.alpha_t.toFixed(2)}, plans rejected ${entry.agent.rejected_attempts}` :
       entry.status === "failed" ? `Run ${entry.id}: ${entry.error}` : `Run ${entry.id}: ${entry.status}`;
     head.textContent = label; div.appendChild(head);
+    if (entry.status === "queued") {
+      const wait = document.createElement("div"); wait.className = "live";
+      wait.textContent = entry.queue_position ? `Waiting for a free worker. Place ${entry.queue_position} in the queue.` : "Waiting for a free worker.";
+      div.appendChild(wait);
+    }
+    if (entry.status === "running") {
+      const p = entry.progress, seconds = entry.started ? Math.max(0, Math.round(Date.now() / 1000 - entry.started)) : 0;
+      const elapsed = `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, "0")}s`;
+      const bar = document.createElement("div"); bar.className = "bar"; bar.setAttribute("role", "progressbar");
+      bar.setAttribute("aria-valuemin", "0"); bar.setAttribute("aria-valuemax", "100"); bar.setAttribute("aria-valuenow", p ? p.percent : 0);
+      const fill = document.createElement("span"); fill.style.width = `${p ? p.percent : 2}%`; bar.appendChild(fill); div.appendChild(bar);
+      const live = document.createElement("div"); live.className = "live";
+      live.textContent = p ? `${p.percent}% through the replay (now at ${p.day}). The agent has made ${p.decisions} decision${p.decisions === 1 ? "" : "s"}: ${p.plans_passed} plan${p.plans_passed === 1 ? "" : "s"} passed, ${p.rejected_attempts} rejected. ${p.calls} of ${p.max_calls} model calls used. ${elapsed} so far.`
+        : `Starting. Waiting for the first model answer. ${elapsed} so far.`;
+      div.appendChild(live);
+      if (p && p.holding) { const hold = document.createElement("div"); hold.className = "live"; hold.textContent = `Holding now: ${Object.entries(p.holding).sort((x, y) => y[1] - x[1]).map(([n, w]) => `${n} ${Math.round(w * 100)}%`).join(", ") || "all cash"}`; div.appendChild(hold); }
+      if (p && p.feed && p.feed.length) {
+        const feed = document.createElement("div"); feed.className = "feed"; feed.setAttribute("aria-live", "polite");
+        for (const d of p.feed) {
+          const row = document.createElement("div"); row.className = "feeditem " + (d.outcome === "held" ? "held" : "passed");
+          const trades = d.trades.length ? d.trades.map(([n, w]) => `${w > 0 ? "buy" : "sell"} ${n} ${Math.abs(Math.round(w * 100))}%`).join(", ") : "no change";
+          const title = document.createElement("strong"); title.textContent = `${d.date} (${d.trigger}): ${d.outcome === "held" ? "held, no valid plan" : trades}`;
+          row.appendChild(title);
+          const why = d.outcome === "held" ? `Rejected ${d.attempts} time${d.attempts === 1 ? "" : "s"}. ${d.rejected.join(" ")}` : `${d.attempts > 1 ? `Passed on attempt ${d.attempts}. ` : ""}${d.explanation}`;
+          const text = document.createElement("div"); text.textContent = why; row.appendChild(text);
+          feed.appendChild(row);
+        }
+        div.appendChild(feed);
+      }
+    }
     const pre = document.createElement("pre"); pre.textContent = entry.guidance; div.appendChild(pre);
     if (entry.status === "done") {
       const button = document.createElement("button"); button.type = "button"; button.className = "ghost"; button.textContent = "See its decisions";
@@ -272,6 +310,7 @@ $("form").addEventListener("submit", async (event) => {
       body: JSON.stringify({ code: $("code").value, team: $("team").value, guidance: $("guidance").value }) });
     store("arena-code", $("code").value); store("arena-team", $("team").value); store("arena-guidance", $("guidance").value);
     show("Running. The leaderboard updates by itself.", false);
+    await loadMine(true);
     await refresh();
   } catch (e) { show(e.message, true); $("run").disabled = false; }
 });

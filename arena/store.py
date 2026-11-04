@@ -10,6 +10,7 @@ import threading
 import time
 from pathlib import Path
 
+PRIVATE_PROGRESS = ("feed", "holding")
 PUBLIC_FIELDS = ("id", "team", "status", "created", "started", "finished", "error")
 
 
@@ -45,6 +46,7 @@ class ArenaStore:
         for entry in self.state["entries"]:
             if entry["status"] == "running":
                 entry["status"] = "queued"
+                entry.pop("progress", None)
 
     def _save(self) -> None:
         if self.persistence:
@@ -84,6 +86,18 @@ class ArenaStore:
                     entry.update(changes)
                     break
             self._save()
+
+    def set_progress(self, entry_id: int, progress: dict) -> None:
+        with self.lock:
+            for entry in self.state["entries"]:
+                if entry["id"] == entry_id:
+                    entry["progress"] = progress
+                    break
+
+    def queue_position(self, entry_id: int):
+        with self.lock:
+            waiting = [e["id"] for e in self.state["entries"] if e["status"] == "queued"]
+            return waiting.index(entry_id) + 1 if entry_id in waiting else None
 
     def get(self, entry_id: int):
         with self.lock:
@@ -128,7 +142,11 @@ class ArenaStore:
                 if key in done:
                     continue
                 mine = [e for e in self.state["entries"] if e["key"] == key]
-                rows.append({"team": name, "status": mine[-1]["status"] if mine else "none"})
+                row = {"team": name, "status": mine[-1]["status"] if mine else "none"}
+                progress = mine[-1].get("progress") if mine else None
+                if progress and row["status"] == "running":
+                    row["percent"] = progress.get("percent")
+                rows.append(row)
             return rows
 
     def attempts(self, key: str) -> int:
@@ -144,6 +162,9 @@ def public_view(entry: dict, include_guidance: bool = False, include_detail: boo
         if include_detail:
             view["decisions"] = result["decisions"]
             view["curve"] = result["curve"]
+    progress = entry.get("progress")
+    if progress and entry.get("status") == "running":
+        view["progress"] = progress if include_guidance else {k: v for k, v in progress.items() if k not in PRIVATE_PROGRESS}
     if include_guidance:
         view["guidance"] = entry.get("guidance")
     return view

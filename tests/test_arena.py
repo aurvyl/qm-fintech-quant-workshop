@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from arena.demo_model import ask as demo_ask  # noqa: E402
 from arena.server import Settings, create_app  # noqa: E402
-from arena.store import ArenaStore, FilePersistence  # noqa: E402
+from arena.store import ArenaStore, FilePersistence, public_view  # noqa: E402
 from backtester import arena  # noqa: E402
 
 
@@ -29,7 +29,7 @@ CODES = ["team-code-001", "team-code-002", "team-code-003"]
 
 
 def make_client(run=None, **settings):
-    def fake_run(guidance, ask):
+    def fake_run(guidance, ask, progress=None):
         return canned(float(len(guidance)) / 1000)
 
     config = Settings(ask=None, team_codes=CODES, admin_code="organiser-code", **settings)
@@ -127,7 +127,7 @@ def test_leaderboard_ranks_teams_by_alpha_and_lists_the_bars():
 def test_one_run_at_a_time_a_fixed_number_of_runs_and_unique_names():
     release = threading.Event()
 
-    def slow(guidance, ask):
+    def slow(guidance, ask, progress=None):
         release.wait(2)
         return canned(0.1)
 
@@ -144,7 +144,7 @@ def test_one_run_at_a_time_a_fixed_number_of_runs_and_unique_names():
 
 
 def test_entries_run_in_parallel():
-    def slow(guidance, ask):
+    def slow(guidance, ask, progress=None):
         time.sleep(0.4)
         return canned(0.1)
 
@@ -157,7 +157,7 @@ def test_entries_run_in_parallel():
 
 
 def test_a_failed_run_is_not_counted_and_shows_a_safe_message():
-    def broken(guidance, ask):
+    def broken(guidance, ask, progress=None):
         raise RuntimeError("secret internal detail")
 
     client, app = make_client(run=broken, max_attempts=1)
@@ -214,3 +214,22 @@ def test_state_survives_a_restart_and_unfinished_entries_run_again(tmp_path):
     assert reloaded.get(entry["id"])["status"] == "queued"
     assert reloaded.team_name("key1") == "Resilient"
     assert reloaded.queued_ids() == [entry["id"]]
+
+
+def test_progress_is_reported_and_kept_private():
+    seen = []
+    prices = arena.arena_prices()
+
+    def ask(prompt):
+        return '{"weights": {"ASSET_A": 0.2, "ASSET_B": 0.2, "ASSET_C": 0.2, "ASSET_D": 0.2, "ASSET_E": 0.2}, "explanation": "Hold the mix."}'
+
+    arena.run_entry("Prefer calm assets when stressed.", ask, prices=prices, max_calls=6, progress=seen.append)
+    assert seen and seen[-1]["calls"] <= 6 and 0 <= seen[-1]["percent"] <= 100
+    assert seen[-1]["decisions"] == len(seen)
+    assert seen[-1]["feed"][0]["date"] == seen[-1]["day"]
+
+
+def test_public_view_hides_latest_reasoning_from_others():
+    entry = {"id": 1, "team": "t", "status": "running", "progress": {"percent": 10, "feed": ["secret idea"], "holding": {"GLD": 0.2}}}
+    assert public_view(entry)["progress"] == {"percent": 10}
+    assert public_view(entry, include_guidance=True)["progress"]["feed"] == ["secret idea"]

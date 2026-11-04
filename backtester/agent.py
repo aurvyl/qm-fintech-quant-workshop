@@ -162,12 +162,14 @@ class AgentManager:
     anonymous:    hide dates and ticker names from the model (look-ahead experiment).
     max_attempts: how many proposals the model gets before we hold.
     log:          one entry per decision: the attempts, the checks, the explanation and any made-up numbers.
+    on_decision:  optional function(entry), called after each decision.
     """
 
     ask: object
     anonymous: bool = False
     max_attempts: int = MAX_ATTEMPTS
     log: list = field(default_factory=list)
+    on_decision: object = None
 
     def __call__(self, context: dict) -> dict | None:
         shown, back = anonymise(context) if self.anonymous else (context, None)
@@ -195,6 +197,8 @@ class AgentManager:
                 break
             conversation = prompt + "\n\n" + RETRY.format(reasons="\n".join(f"- {r}" for r in check.reasons))
         self.log.append(entry)
+        if self.on_decision:
+            self.on_decision(entry)
         return entry["plan"]
 
     def decisions(self) -> pd.DataFrame:
