@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent arena</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #ffffff; --text: #14181f; --muted: #5b6573; --line: #dde1e7; --accent: #1f5fd6;
+  --accent-text: #ffffff; --good: #137a43; --bad: #b3261e; --bar: #eef0f3; --c1: #1f5fd6; --c2: #d9480f;
+  --c3: #0b7a75; --c4: #8a3ffc; --c5: #b08900; --grid: #e6e9ee;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1216; --card: #171b21; --text: #e8ebf0; --muted: #9aa4b2; --line: #2a303a; --accent: #6ea2ff;
+    --accent-text: #0b1220; --good: #4cc38a; --bad: #ff8a80; --bar: #1d232b; --c1: #6ea2ff; --c2: #ff9a5c;
+    --c3: #4fd1c5; --c4: #b794f6; --c5: #e3b341; --grid: #232932;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 1.6rem; margin: 0 0 4px; }
+h2 { font-size: 1.05rem; margin: 0 0 12px; }
+p { margin: 0 0 12px; }
+.muted { color: var(--muted); }
+.top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; border: 1px solid var(--line); }
+.pill.open { color: var(--good); border-color: var(--good); }
+.pill.closed { color: var(--bad); border-color: var(--bad); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 860px) { .grid { grid-template-columns: 1.1fr 1fr; } }
+label { display: block; font-weight: 600; font-size: 0.85rem; margin: 0 0 4px; }
+input, textarea { width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+textarea { min-height: 150px; resize: vertical; }
+input:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.row { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; margin-bottom: 12px; }
+@media (max-width: 480px) { .row { grid-template-columns: 1fr; } }
+button { font: inherit; font-weight: 600; border: 0; border-radius: 10px; padding: 10px 16px; background: var(--accent); color: var(--accent-text); cursor: pointer; min-height: 44px; }
+button[disabled] { opacity: 0.5; cursor: not-allowed; }
+button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); padding: 6px 10px; min-height: 32px; font-size: 0.85rem; }
+.hint { font-size: 0.8rem; color: var(--muted); display: flex; justify-content: space-between; gap: 12px; margin-top: 4px; }
+.hint span:last-child { white-space: nowrap; }
+.msg { margin-top: 12px; font-size: 0.9rem; }
+.msg.error { color: var(--bad); }
+.msg.ok { color: var(--good); }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; min-width: 640px; }
+th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:nth-child(1), td:nth-child(1), th:nth-child(2), td:nth-child(2) { text-align: left; }
+th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); font-weight: 600; }
+tr.bar td { background: var(--bar); color: var(--muted); font-style: italic; }
+tr.team { cursor: pointer; }
+tr.team:hover td, tr.team.picked td { background: var(--bar); }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
+.pos { color: var(--good); } .neg { color: var(--bad); }
+.tick { color: var(--good); font-weight: 700; }
+canvas { width: 100%; height: 280px; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.8rem; margin-top: 8px; }
+.run { border-top: 1px solid var(--line); padding: 10px 0; font-size: 0.9rem; }
+.run:first-child { border-top: 0; }
+.run pre { white-space: pre-wrap; word-break: break-word; margin: 6px 0 0; font: inherit; color: var(--muted); }
+.decisions { font-size: 0.85rem; margin-top: 8px; }
+.decisions div { padding: 6px 0; border-top: 1px solid var(--line); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <h1>Agent arena</h1>
+      <p class="muted" style="margin:0">Write guidance for the AI risk manager. Everyone is replayed on the same prices, from <span id="from">2023</span> to now.</p>
+    </div>
+    <span id="status" class="pill">Loading</span>
+  </div>
+
+  <div class="grid">
+    <section class="card" aria-labelledby="h-submit">
+      <h2 id="h-submit">Your entry</h2>
+      <form id="form" autocomplete="off">
+        <div class="row">
+          <div><label for="code">Team code</label><input id="code" type="password" required minlength="8" maxlength="100"></div>
+          <div><label for="team">Team name</label><input id="team" type="text" required maxlength="30"></div>
+        </div>
+        <label for="guidance">Guidance for the risk manager</label>
+        <textarea id="guidance" required maxlength="1000" placeholder="Example: Prefer gold over bonds when you rotate. Cut tech in small steps and keep the portfolio close to its start weights."></textarea>
+        <div class="hint"><span>The model sees tickers and dates hidden. It cannot break the risk rules.</span><span id="count">0 / 1000</span></div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button id="run" type="submit">Run my agent</button>
+          <button id="refresh" class="ghost" type="button">Show my runs</button>
+        </div>
+        <div id="msg" class="msg" role="status" aria-live="polite"></div>
+      </form>
+    </section>
+
+    <section class="card" aria-labelledby="h-chart">
+      <h2 id="h-chart">Growth of 100</h2>
+      <canvas id="chart" role="img" aria-label="Growth of 100 for the picked teams and the bars to beat"></canvas>
+      <div id="legend" class="legend"></div>
+      <p class="muted" style="font-size:0.8rem;margin:10px 0 0">Click a team in the table to add or remove it.</p>
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="h-board">
+    <h2 id="h-board">Leaderboard</h2>
+    <p class="muted" style="font-size:0.85rem">Ranked by alpha a year: what is left after taking the market out. A tick means the t-stat is 2 or more, so it is unlikely to be luck. Grey rows are the bars to beat.</p>
+    <div class="scroll"><table id="board"><thead><tr>
+      <th>#</th><th>Team</th><th>Alpha / year</th><th>t-stat</th><th>Beta</th><th>Total return</th><th>Worst fall</th><th>Days over limit</th><th>Plans rejected</th><th>Runs</th>
+    </tr></thead><tbody></tbody></table></div>
+    <p id="empty" class="muted" hidden style="margin-top:12px">No results yet. Be the first to run.</p>
+    <p id="waiting" class="muted" style="font-size:0.85rem;margin-top:12px"></p>
+  </section>
+
+  <section class="card" id="mine" hidden aria-labelledby="h-mine">
+    <h2 id="h-mine">Your runs</h2>
+    <div id="runs"></div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const COLORS = ["--c1", "--c2", "--c3", "--c4", "--c5"];
+let state = null, curves = {}, picked = null, timer = null, mine = null;
+
+function store(key, value) { try { if (value === undefined) return localStorage.getItem(key) || ""; localStorage.setItem(key, value); } catch (e) { return ""; } }
+function pct(v, digits = 1, sign = false) { return v === null || v === undefined ? "n/a" : (sign && v > 0 ? "+" : "") + (v * 100).toFixed(digits) + "%"; }
+function cls(v) { return v > 0 ? "pos" : v < 0 ? "neg" : ""; }
+function cell(tr, text, className) { const td = document.createElement("td"); td.textContent = text; if (className) td.className = className; tr.appendChild(td); return td; }
+function color(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+async function api(path, options = {}) {
+  const response = await fetch(path, options);
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.detail || "Something went wrong.");
+  return body;
+}
+
+function renderBoard() {
+  const body = $("board").querySelector("tbody");
+  body.replaceChildren();
+  const rows = [
+    ...state.teams.map((t) => ({ kind: "team", name: t.team, rank: t.rank, m: t.metrics, a: t.agent, runs: t.attempts })),
+    ...state.baselines.map((b) => ({ kind: "bar", name: b.name, m: b.metrics })),
+  ].sort((a, b) => b.m.alpha_annual - a.m.alpha_annual);
+  $("empty").hidden = state.teams.length > 0;
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+    tr.className = row.kind === "bar" ? "bar" : "team" + (picked.includes(row.name) ? " picked" : "");
+    cell(tr, row.kind === "bar" ? "" : row.rank);
+    const name = cell(tr, "");
+    if (row.kind === "team") {
+      const index = picked.indexOf(row.name);
+      if (index >= 0) { const dot = document.createElement("span"); dot.className = "swatch"; dot.style.background = color(COLORS[index % 5]); name.appendChild(dot); }
+      tr.addEventListener("click", () => toggle(row.name));
+    }
+    name.appendChild(document.createTextNode(row.name));
+    cell(tr, pct(row.m.alpha_annual, 1, true), row.kind === "team" ? cls(row.m.alpha_annual) : "");
+    const t = cell(tr, row.kind === "bar" && row.name.startsWith("The market") ? "" : row.m.alpha_t.toFixed(2));
+    if (row.m.reliable) { t.textContent += " "; const tick = document.createElement("span"); tick.className = "tick"; tick.textContent = "✓"; t.appendChild(tick); }
+    cell(tr, row.m.beta.toFixed(2));
+    cell(tr, pct(row.m.total_return, 0), cls(row.m.total_return));
+    cell(tr, pct(row.m.max_drawdown, 1), cls(row.m.max_drawdown));
+    cell(tr, row.m.days_over_limit === null ? "n/a" : row.m.days_over_limit);
+    cell(tr, row.kind === "team" ? row.a.rejected_attempts : "");
+    cell(tr, row.kind === "team" ? `${row.runs} / ${state.max_attempts}` : "");
+    body.appendChild(tr);
+  }
+  const waiting = state.waiting.filter((w) => w.status === "queued" || w.status === "running");
+  $("waiting").textContent = waiting.length ? `Running now: ${waiting.map((w) => w.team).join(", ")}` : "";
+}
+
+function toggle(name) {
+  picked = picked.includes(name) ? picked.filter((n) => n !== name) : [...picked, name].slice(-5);
+  renderBoard(); drawChart();
+}
+
+function drawChart() {
+  const canvas = $("chart"), ratio = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth, height = canvas.clientHeight;
+  canvas.width = width * ratio; canvas.height = height * ratio;
+  const g = canvas.getContext("2d"); g.scale(ratio, ratio); g.clearRect(0, 0, width, height);
+  const series = [
+    ...state.baselines.map((b, i) => ({ name: b.name, bar: true, dash: [[6, 4], [2, 3], [10, 3, 2, 3]][i % 3], data: curves[b.name] || [] })),
+    ...picked.filter((n) => curves[n]).map((n, i) => ({ name: n, color: color(COLORS[i % 5]), data: curves[n] })),
+  ].filter((s) => s.data.length);
+  const left = 40, bottom = 22, top = 8, right = 8;
+  if (!series.length) return;
+  const all = series.flatMap((s) => s.data.map((p) => p[1]));
+  const low = Math.floor(Math.min(...all, 100) / 10) * 10, high = Math.ceil(Math.max(...all) / 10) * 10;
+  const days = series.flatMap((s) => s.data.map((p) => Date.parse(p[0])));
+  const d0 = Math.min(...days), d1 = Math.max(...days);
+  const x = (d) => left + ((Date.parse(d) - d0) / (d1 - d0 || 1)) * (width - left - right);
+  const y = (v) => top + (1 - (v - low) / (high - low || 1)) * (height - top - bottom);
+  g.font = "11px sans-serif"; g.fillStyle = color("--muted"); g.strokeStyle = color("--grid"); g.lineWidth = 1;
+  const stepValue = Math.max(10, Math.ceil((high - low) / 5 / 10) * 10);
+  for (let v = low; v <= high; v += stepValue) { g.beginPath(); g.moveTo(left, y(v)); g.lineTo(width - right, y(v)); g.stroke(); g.fillText(v, 6, y(v) + 4); }
+  for (let year = new Date(d0).getFullYear() + 1; year <= new Date(d1).getFullYear(); year++) {
+    const px = x(`${year}-01-01`); g.fillText(year, px - 12, height - 6);
+  }
+  for (const s of series) {
+    g.beginPath(); g.lineWidth = s.bar ? 1.5 : 2.2; g.strokeStyle = s.bar ? color("--muted") : s.color; g.setLineDash(s.bar ? s.dash : []);
+    s.data.forEach((p, i) => (i ? g.lineTo(x(p[0]), y(p[1])) : g.moveTo(x(p[0]), y(p[1]))));
+    g.stroke();
+  }
+  g.setLineDash([]);
+  const legend = $("legend"); legend.replaceChildren();
+  for (const s of series) {
+    const item = document.createElement("span"); const dot = document.createElement("span");
+    dot.className = "swatch"; dot.style.background = s.bar ? color("--muted") : s.color; item.appendChild(dot);
+    item.appendChild(document.createTextNode(s.name)); legend.appendChild(item);
+  }
+}
+
+async function refresh() {
+  try {
+    state = await api("/api/state");
+    curves = await api("/api/curves");
+  } catch (e) { return; }
+  if (picked === null) picked = state.teams.slice(0, 3).map((t) => t.team);
+  picked = picked.filter((n) => curves[n]);
+  const status = $("status"); status.textContent = state.open ? "Open" : "Closed"; status.className = "pill " + (state.open ? "open" : "closed");
+  $("from").textContent = state.scored_from.slice(0, 4);
+  renderBoard(); drawChart();
+  if (mine) await loadMine(true);
+  const active = state.busy > 0;
+  clearTimeout(timer); timer = setTimeout(refresh, active ? 3000 : 15000);
+}
+
+async function loadMine(quiet) {
+  const code = $("code").value;
+  if (!code) return;
+  try {
+    mine = await api("/api/mine", { headers: { "x-arena-code": code } });
+  } catch (e) { if (!quiet) show(e.message, true); return; }
+  $("mine").hidden = !mine.entries.length;
+  const runs = $("runs"); runs.replaceChildren();
+  for (const entry of [...mine.entries].reverse()) {
+    const div = document.createElement("div"); div.className = "run";
+    const head = document.createElement("div");
+    const m = entry.metrics;
+    const label = entry.status === "done" ? `Run ${entry.id}: alpha ${pct(m.alpha_annual, 1, true)} a year, t-stat ${m.alpha_t.toFixed(2)}, plans rejected ${entry.agent.rejected_attempts}` :
+      entry.status === "failed" ? `Run ${entry.id}: ${entry.error}` : `Run ${entry.id}: ${entry.status}`;
+    head.textContent = label; div.appendChild(head);
+    const pre = document.createElement("pre"); pre.textContent = entry.guidance; div.appendChild(pre);
+    if (entry.status === "done") {
+      const button = document.createElement("button"); button.type = "button"; button.className = "ghost"; button.textContent = "See its decisions";
+      const box = document.createElement("div"); box.className = "decisions";
+      button.addEventListener("click", async () => {
+        const detail = await api(`/api/entry/${entry.id}`, { headers: { "x-arena-code": code } });
+        box.replaceChildren();
+        for (const d of detail.decisions) { const line = document.createElement("div"); line.textContent = `${d.date}: ${d.outcome}. ${d.explanation}`; box.appendChild(line); }
+      });
+      div.appendChild(button); div.appendChild(box);
+    }
+    runs.appendChild(div);
+  }
+  const left = mine.attempts_left;
+  if (!quiet) show(`${left} run${left === 1 ? "" : "s"} left for ${mine.team || "your team"}.`, false);
+  $("run").disabled = !state.open || left <= 0 || mine.entries.some((e) => e.status === "queued" || e.status === "running");
+}
+
+function show(text, error) { const m = $("msg"); m.textContent = text; m.className = "msg " + (error ? "error" : "ok"); }
+
+$("guidance").addEventListener("input", () => { $("count").textContent = `${$("guidance").value.length} / 1000`; });
+$("refresh").addEventListener("click", () => loadMine(false));
+$("form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  $("run").disabled = true; show("Sending...", false);
+  try {
+    await api("/api/submit", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: $("code").value, team: $("team").value, guidance: $("guidance").value }) });
+    store("arena-code", $("code").value); store("arena-team", $("team").value); store("arena-guidance", $("guidance").value);
+    show("Running. The leaderboard updates by itself.", false);
+    await refresh();
+  } catch (e) { show(e.message, true); $("run").disabled = false; }
+});
+$("code").value = store("arena-code"); $("team").value = store("arena-team"); $("guidance").value = store("arena-guidance");
+$("count").textContent = `${$("guidance").value.length} / 1000`;
+window.addEventListener("resize", () => state && drawChart());
+refresh().then(() => { if (store("arena-code")) loadMine(true); });
+</script>
+</body>
+</html>

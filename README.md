@@ -56,6 +56,8 @@ Each session adds one idea to the last: why we test, how to measure, how a test 
 
 The app demo and the take-home dashboard fit anywhere after session 2.
 
+**Agent arena:** after session 8 teams can paste their own guidance for the AI risk manager into a web page and compete on one leaderboard. The organiser runs it; see [`arena/README.md`](arena/README.md).
+
 ## Write your own strategy
 
 A strategy is just a function: prices in, positions out (`1` = hold, `0` = cash, `-1` = short). In Colab, write it straight into a notebook cell (after running **▶ Setup**) — no files to edit:
@@ -84,7 +86,9 @@ backtester/            the engine: data loading, run_backtest, metrics, charts
   risk.py              portfolio limits, Value at Risk, and a day-by-day replay that obeys them
   agent.py             an AI risk manager whose every proposal passes the same checks
   alpha.py             alpha and beta by regression, and the alpha competition scorer
+  arena.py             scores a team's guidance for the AI risk manager on a held-back period
   honesty.py           toy strategies with a known answer, best-of-many luck, and walk-forward
+arena/                 the agent arena web app: team guidance in, leaderboard out
 competition/           house strategies and entries/ (one file per team)
 scripts/leaderboard.py scores every entry the same way on the held-back period (the organiser keeps the result private)
 strategies/            ma_crossover, rsi_mean_reversion, and template.py for your own

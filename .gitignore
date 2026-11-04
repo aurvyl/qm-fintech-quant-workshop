@@ -15,3 +15,6 @@ __pycache__/
 
 # Organiser output: shows the scored period, never publish
 competition/leaderboard.md
+
+# Arena demo state
+arena_state.json
