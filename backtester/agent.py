@@ -113,7 +113,7 @@ NUMBER = re.compile(r"-?\d+(?:\.\d+)?%?")
 
 
 def numbers_in(snapshot_numbers: dict) -> set[float]:
-    """Every number in a snapshot, in the forms a person might write it (0.123 -> 0.12, 12.3, 12)."""
+    """Every number in a snapshot, in the forms a person might write it (0.1234 -> 0.1234, 0.12, 12.34, 12.3, 12)."""
     found = set()
 
     def walk(value):
@@ -125,7 +125,7 @@ def numbers_in(snapshot_numbers: dict) -> set[float]:
                 walk(v)
         elif isinstance(value, (int, float)) and not isinstance(value, bool):
             for x in (value, value * 100):
-                for digits in (0, 1, 2):
+                for digits in (0, 1, 2, 3, 4):
                     found.add(round(abs(x), digits))
 
     walk(snapshot_numbers)
@@ -135,10 +135,14 @@ def numbers_in(snapshot_numbers: dict) -> set[float]:
 def unsupported_numbers(explanation: str, snapshot_numbers: dict, weights: dict | None = None) -> list[str]:
     """Numbers in the explanation that appear nowhere in the snapshot or the proposed weights.
 
+    The proposed weights, their total and the cash left over (1 minus the total) count as known.
     A non-empty list means the model stated a figure our code never gave it: treat it as made up.
     Small whole numbers (0 to 10) are ignored, as they are usually counts ("3 holdings").
     """
     known = numbers_in({"s": snapshot_numbers, "w": weights or {}})
+    if weights:
+        invested = sum(weights.values())
+        known |= numbers_in({"invested": invested, "cash": max(1.0 - invested, 0.0)})
     flagged = []
     for token in NUMBER.findall(explanation):
         value = abs(float(token.rstrip("%")))

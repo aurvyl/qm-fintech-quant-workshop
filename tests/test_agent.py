@@ -186,3 +186,12 @@ def test_workshop_model_sends_the_code_and_shows_the_server_message(monkeypatch)
         ask("hello")
     with pytest.raises(ValueError):
         agent.workshop_model("", "code")
+
+
+def test_exact_snapshot_figures_and_trade_results_are_not_flagged():
+    numbers = {"risk_share": {"ASSET_C": 0.2794}, "one_day_var": 0.0283}
+    assert agent.unsupported_numbers("ASSET_C carries 0.2794 of the risk and 27.94% of it.", numbers) == []
+    assert agent.unsupported_numbers("VaR is 0.0283.", numbers) == []
+    weights = {"ASSET_A": 0.3, "ASSET_B": 0.6}
+    assert agent.unsupported_numbers("That leaves 10% in cash with 90% invested.", numbers, weights) == []
+    assert agent.unsupported_numbers("ASSET_C fell 31.5% last week.", numbers) == ["31.5%"]
