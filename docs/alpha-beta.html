@@ -115,7 +115,7 @@ footer { color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--ru
 
 <main>
   <header style="display:grid;gap:12px">
-    <div class="eyebrow">Quant workshop · Notebook 07</div>
+    <div class="eyebrow">Quant workshop · Notebook 08</div>
     <h1>Alpha and beta</h1>
     <p class="lede">Did your strategy make money because the market went up, or because it was good? Plot one dot per month, draw a line through the dots, and the line answers it.</p>
   </header>
@@ -200,14 +200,14 @@ footer { color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--ru
 
   <section aria-labelledby="h-comp">
     <h2 id="h-comp">The alpha competition</h2>
-    <p>Write a strategy in notebook 07, score it, and enter it. Highest alpha wins, under rules that make it hard to win by luck or by cheating:</p>
+    <p>Write a strategy in notebook 08, check it, and enter it. The entry with the best t-stat on the held-back period wins, under rules that make it hard to win by luck or by cheating:</p>
     <ul class="rules">
       <li><strong>Same fixed data for everyone.</strong> 24 ETFs and stocks, 2016 to October 2026. Every score is stamped with the data file's fingerprint.</li>
-      <li><strong>Build on the past, scored on later data.</strong> Tune on 2016 to 2022 as much as you like. Only alpha from 2023 onwards counts.</li>
+      <li><strong>Build on the past, scored on later data.</strong> Tune on 2016 to 2022 as much as you like. Only 2023 onwards counts, and the organiser keeps those scores from you until the deadline.</li>
       <li><strong>No peeking.</strong> The scorer flips every price move after six dates and runs your strategy again. If your choices before those dates change, you used future prices and you are out.</li>
       <li><strong>No leverage, no shorting, real costs.</strong> Weights add up to at most 100%, and every trade pays 0.05%. Beta cannot be pumped up to fake a result.</li>
       <li><strong>The organiser runs the code.</strong> Teams submit the strategy file, not a number. Entries that load their own data are refused.</li>
-      <li><strong>The t-stat is shown next to the alpha.</strong> Ties go to the higher t-stat, and a big alpha with a small t-stat is a warning sign.</li>
+      <li><strong>Ranked by the t-stat.</strong> A big alpha with a small t-stat is a warning sign, so the t-stat decides the order. A win needs a t-stat of 2 or more. Ties go to the higher alpha.</li>
     </ul>
   </section>
 

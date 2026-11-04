@@ -7,6 +7,7 @@ from backtester.alpha import (
     find_lookahead,
     format_leaderboard,
     leaderboard,
+    preview_leaderboard,
     monthly_cash_return,
     monthly_returns,
     score,
@@ -94,7 +95,7 @@ def test_score_disqualifies_cheats_and_leverage():
     assert idle.problem == "never invests"
 
 
-def test_leaderboard_ranks_by_test_alpha_with_disqualified_last():
+def test_leaderboard_ranks_by_t_stat_with_disqualified_last():
     closes = synthetic_closes(days=1300)
     scores = [
         score(hold_market, "market", closes),
@@ -104,7 +105,9 @@ def test_leaderboard_ranks_by_test_alpha_with_disqualified_last():
     table = leaderboard(scores)
     assert table.iloc[-1]["Strategy"] == "cheat"
     qualified = table[table["Status"] == "OK"]
-    assert qualified["Test alpha / year"].is_monotonic_decreasing
+    assert qualified["Test alpha t-stat"].fillna(0.0).is_monotonic_decreasing
+    assert set(table["Reliable"]) <= {"yes", "no"}
+    assert table.iloc[-1]["Reliable"] == "no"
     shown = format_leaderboard(table)
     assert shown["Test alpha / year"].str.endswith("%").sum() >= 2
 
@@ -151,3 +154,26 @@ def test_explainer_embeds_the_interactive_page():
     shown = explainer(height=900).data
     assert shown.startswith("<iframe srcdoc=") and "height:900px" in shown
     assert "Move the line" in shown and "&lt;script&gt;" in shown
+
+
+def test_preview_never_shows_the_scored_period():
+    closes = synthetic_closes(days=1300)
+    entry = score(hold_market, "market", closes)
+    preview = preview_leaderboard([entry])
+    assert not any("Test" in column for column in preview.columns)
+    assert not any("Test" in str(column) for column in entry.summary().columns)
+    assert any("Test" in str(column) for column in entry.summary(show_test=True).columns)
+
+
+def test_a_lucky_big_alpha_does_not_beat_a_reliable_small_one():
+    from backtester.alpha import Score, AlphaBeta
+
+    def fit(alpha, t):
+        return AlphaBeta(alpha / 12, 1.0, t, 0.9, 40, pd.DataFrame())
+
+    lucky = Score("lucky", None, fit(0.12, 0.8), [], None)
+    steady = Score("steady", None, fit(0.02, 2.5), [], None)
+    table = leaderboard([lucky, steady])
+    assert table.iloc[0]["Strategy"] == "steady"
+    assert table.iloc[0]["Reliable"] == "yes"
+    assert table.iloc[1]["Reliable"] == "no"

@@ -76,12 +76,13 @@ def compute_metrics(
     }
 
 
-def recent_period(result, share: float = 0.2, min_days: int = 60) -> pd.DataFrame | None:
+def recent_period(result, share: float = 0.2, min_days: int = 60, risk_free_rate: float = 0.0) -> pd.DataFrame | None:
     """Score the last `share` of a backtest again, on its own, next to the benchmark.
 
     A result that only looks good over the whole history, and not over its most recent stretch,
     deserves suspicion. Returns None when that stretch is shorter than `min_days` trading days.
     Works with any result that has `equity` and `benchmark_equity` (run_backtest or run_portfolio_backtest).
+    risk_free_rate is the yearly cash rate Sharpe is measured above (0.03 = 3%); pass the one the backtest used.
     """
     span = round((len(result.equity) - 1) * share)
     if span < min_days:
@@ -95,7 +96,7 @@ def recent_period(result, share: float = 0.2, min_days: int = 60) -> pd.DataFram
             {
                 "Total return": total_return(equity),
                 "Annual return (CAGR)": cagr(equity),
-                "Sharpe ratio": sharpe_ratio(returns),
+                "Sharpe ratio": sharpe_ratio(returns, risk_free_rate),
                 "Max drawdown": max_drawdown(equity),
             }
         )

@@ -9,7 +9,8 @@ beta  is the slope: how much you move when the market moves 1%.
 alpha is where the line crosses zero: what you earned in a month when the market did nothing.
 
 The alpha competition scores every strategy the same way, on the same fixed data,
-and ranks on a test period the strategy was not built on. See notebook 07.
+and ranks on a test period the strategy was not built on. Students only ever see the build period;
+the organiser holds the test period back. See notebook 08.
 """
 
 import hashlib
@@ -29,6 +30,7 @@ COST_BPS = 5.0
 DEV_PERIOD = ("2016-01-01", "2022-12-31")
 TEST_PERIOD = ("2023-01-01", None)
 MIN_MONTHS = 24
+T_STAT_WIN = 2.0
 LOOKAHEAD_CUTS = 6
 
 
@@ -226,26 +228,43 @@ class Score:
             "Status": "OK" if self.qualified else f"Out: {self.problem}",
         }
 
-    def summary(self) -> pd.DataFrame:
+    def preview_row(self) -> dict:
+        """What a student may see: the build period and the checks, never the scored period."""
+        def pick(name):
+            return getattr(self.dev, name) if self.dev is not None else float("nan")
+
+        return {
+            "Strategy": self.name,
+            "Build-period alpha / year": pick("alpha_annual"),
+            "Build-period beta": pick("beta"),
+            "Build-period alpha t-stat": pick("alpha_t"),
+            "Status": "OK so far" if self.qualified else f"Out: {self.problem}",
+        }
+
+    def summary(self, show_test: bool = False) -> pd.DataFrame:
+        """The fitted line for the build period. The scored test period shows only when show_test is True (organiser)."""
         columns = {}
         if self.dev is not None:
             columns[f"Build period {DEV_PERIOD[0][:4]} to {DEV_PERIOD[1][:4]}"] = self.dev.summary()
-        if self.test is not None:
+        if show_test and self.test is not None:
             columns[f"Test period from {TEST_PERIOD[0][:4]} (scored)"] = self.test.summary()
         table = pd.DataFrame(columns)
         table.columns.name = self.name if self.qualified else f"{self.name} (out: {self.problem})"
         return table
 
-    def plot(self):
-        """The build period and the scored test period side by side."""
+    def plot(self, show_test: bool = False):
+        """The build period. With show_test (organiser only) the scored test period sits beside it."""
         from matplotlib.figure import Figure
 
-        fig = Figure(figsize=(12, 6))
-        left, right = fig.subplots(1, 2, sharey=True)
+        fig = Figure(figsize=(12 if show_test else 6, 6))
+        if show_test:
+            left, right = fig.subplots(1, 2, sharey=True)
+            if self.test is not None:
+                self.test.plot("Test period (this is scored)", ax=right)
+        else:
+            left = fig.subplots(1, 1)
         if self.dev is not None:
             self.dev.plot("Build period", ax=left)
-        if self.test is not None:
-            self.test.plot("Test period (this is scored)", ax=right)
         fig.suptitle(self.name)
         fig.tight_layout()
         return fig
@@ -260,7 +279,7 @@ def score(strategy, name: str = "My strategy", closes: pd.DataFrame | None = Non
               up to at most 1, no negatives. Whatever is left sits in cash and earns CASH_RATE.
               Returning a Series instead means "this share of the money in SPY".
     Rules: 5 bp cost on every trade, no leverage, no shorting, the one-day delay is applied for you,
-           and the strategy must not use future prices. Rank = test-period alpha per year.
+           and the strategy must not use future prices. Rank = test-period alpha t-stat; a win needs T_STAT_WIN.
     """
     closes = competition_closes() if closes is None else closes
     fingerprint = data_fingerprint()
@@ -291,14 +310,30 @@ def score(strategy, name: str = "My strategy", closes: pd.DataFrame | None = Non
 
 
 def leaderboard(scores: list[Score]) -> pd.DataFrame:
-    """Rank by test-period alpha per year. Ties go to the higher t-stat. Disqualified entries sit at the bottom."""
+    """The organiser's ranking: by test-period alpha t-stat, so a lucky big alpha cannot win.
+
+    Ties go to the higher alpha. An entry is "Reliable" only at a t-stat of T_STAT_WIN or more.
+    Disqualified entries sit at the bottom.
+    """
     table = pd.DataFrame([s.row() for s in scores])
     if table.empty:
         return table
     table["_out"] = table["Status"] != "OK"
-    table = table.sort_values(["_out", "Test alpha / year", "Test alpha t-stat"],
-                              ascending=[True, False, False], na_position="last").drop(columns="_out")
+    table["_t"] = table["Test alpha t-stat"].fillna(0.0)
+    table = table.sort_values(["_out", "_t", "Test alpha / year"], ascending=[True, False, False], na_position="last")
+    table["Reliable"] = np.where(table["_out"], "no", np.where(table["_t"] >= T_STAT_WIN, "yes", "no"))
+    table = table.drop(columns=["_out", "_t"])
     table.index = pd.RangeIndex(1, len(table) + 1, name="Rank")
+    return table
+
+
+def preview_leaderboard(scores: list[Score]) -> pd.DataFrame:
+    """What students see while they build: the build period only. The scored period stays with the organiser."""
+    table = pd.DataFrame([s.preview_row() for s in scores])
+    if table.empty:
+        return table
+    table = table.sort_values("Build-period alpha t-stat", ascending=False, na_position="last")
+    table.index = pd.RangeIndex(1, len(table) + 1, name="Order")
     return table
 
 
@@ -306,14 +341,17 @@ def format_leaderboard(table: pd.DataFrame) -> pd.DataFrame:
     """Readable copy of a leaderboard: percentages and two decimals."""
     shown = table.copy()
     for column in ("Test alpha / year", "Build-period alpha / year"):
-        shown[column] = shown[column].map(lambda v: "n/a" if pd.isna(v) else f"{v:+.1%}")
-    for column in ("Test beta", "Test alpha t-stat"):
-        shown[column] = shown[column].map(lambda v: "n/a" if pd.isna(v) else f"{v:.2f}")
+        if column in shown:
+            shown[column] = shown[column].map(lambda v: "n/a" if pd.isna(v) else f"{v:+.1%}")
+    for column in ("Test beta", "Test alpha t-stat", "Build-period beta", "Build-period alpha t-stat"):
+        if column in shown:
+            shown[column] = shown[column].map(lambda v: "n/a" if pd.isna(v) else f"{v:.2f}")
     return shown
 
 
 __all__ = [
     "AlphaBeta", "CASH_RATE", "COST_BPS", "DEV_PERIOD", "MARKET", "MIN_MONTHS", "Score", "TEST_PERIOD",
     "alpha_beta", "competition_closes", "daily_cash_return", "data_fingerprint", "explainer", "find_lookahead",
-    "format_leaderboard", "leaderboard", "monthly_cash_return", "monthly_returns", "score",
+    "format_leaderboard", "leaderboard", "monthly_cash_return", "monthly_returns", "preview_leaderboard", "score",
+    "T_STAT_WIN",
 ]

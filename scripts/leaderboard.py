@@ -94,7 +94,7 @@ def to_markdown(scores: list[Score]) -> str:
         f"Scored {dt.date.today():%Y-%m-%d} on data file `{data_fingerprint()}`, "
         f"test period {TEST_PERIOD[0]} to {closes.index[-1]:%Y-%m-%d}.",
         f"Market: {MARKET}. Cash: {CASH_RATE:.0%} a year. Trading cost: {COST_BPS:.0f} bp. Long only, no leverage.",
-        "Ranked by test-period alpha per year. A t-stat under 2 means the alpha could easily be luck.",
+        "Ranked by test-period alpha t-stat, so a lucky big alpha cannot win. Reliable means a t-stat of 2 or more: under 2 the alpha could easily be luck.",
         "",
         header,
         rule,

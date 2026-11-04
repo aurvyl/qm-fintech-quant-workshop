@@ -1,6 +1,6 @@
 """Reference solution: every number and chart line on the trading dashboard.
 
-Stuck on a step in notebook 04? Compare your function with the one here.
+Stuck on a step in the take-home notebook? Compare your function with the one here.
 Daily data is assumed (one year = 252 trading days) and the risk-free rate is taken as 0,
 the same conventions as the workshop's backtester.
 """

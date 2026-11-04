@@ -14,7 +14,7 @@ Led by **Adnan Salehin** (Lead SWE & VP, JPMorgan) · Organised by **QM FinTech 
 
 👉 **Workshop page: [kolyamkl.github.io/qm-fintech-quant-workshop](https://kolyamkl.github.io/qm-fintech-quant-workshop/)**: every notebook opens in Colab in a **new tab**. (Buttons on this GitHub page open in the same tab; Cmd/Ctrl-click to open a new one.)
 
-1. Open the main workshop notebook: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/01_workshop_ma_crossover.ipynb)
+1. Open the first notebook: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/00_why_test_a_trading_idea.ipynb)
 2. If Colab warns that the notebook wasn't written by Google, click **Run anyway**.
 3. Click **File → Save a copy in Drive**, so your changes are kept.
 4. Run the first cell (**▶ Setup**). It downloads the workshop code and data into your Colab session.
@@ -26,26 +26,35 @@ Led by **Adnan Salehin** (Lead SWE & VP, JPMorgan) · Organised by **QM FinTech 
 
 | Notebook | What it covers | Colab |
 |---|---|---|
-| `00_intro_to_algo_trading` | What algo trading is + key terms | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/00_intro_to_algo_trading.ipynb) |
-| `01_workshop_ma_crossover` | **The main workshop**: data → signal → backtest → pitfalls | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/01_workshop_ma_crossover.ipynb) |
-| `02_rsi_mean_reversion` | A second strategy: buy the dip, sell the rip | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/02_rsi_mean_reversion.ipynb) |
-| `03_compare_with_library` | The same strategy in backtesting.py | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/03_compare_with_library.ipynb) |
-| `04_project_trading_dashboard` | **Take-home project:** build your own trading dashboard and run it on your computer ([details](projects/trading_dashboard/)) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/04_project_trading_dashboard.ipynb) |
-| `05_portfolio_risk_rules` | Portfolios with weights, sector rotation, dual momentum, and risk rules in plain words: drawdown limits, Value at Risk, hold vs sell everything vs rotate through 2020 and 2022 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/05_portfolio_risk_rules.ipynb) |
-| `06_ai_risk_agent` | **An AI agent that trades, checked by maths:** a language model proposes trades, fixed code checks every one, and the backtest scores it. Runs offline without a key | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/06_ai_risk_agent.ipynb) |
-| `07_alpha_competition` | **Alpha, beta and the alpha competition:** how much of a return is just the market, why a big alpha can be luck, then write your own strategy and compete for the best alpha on data it was not built on ([interactive explainer](https://kolyamkl.github.io/qm-fintech-quant-workshop/alpha-beta.html)) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/07_alpha_competition.ipynb) |
+| `00_why_test_a_trading_idea` | **Session 1.** What a trading strategy is, and why we test it on old prices first | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/00_why_test_a_trading_idea.ipynb) |
+| `01_returns_and_risk` | **Session 2.** How much did it make, and how bumpy was the ride? Returns, volatility, worst fall, Sharpe ratio | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/01_returns_and_risk.ipynb) |
+| `02_backtest_honesty` | **Session 3.** How a backtest can lie: peeking at the future, costs, luck, train and test, walk-forward | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/02_backtest_honesty.ipynb) |
+| `03_risk_limits_one_asset` | **Session 4.** Managing risk: limits in plain words, warning lines, value at risk, three reactions to a crash | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/03_risk_limits_one_asset.ipynb) |
+| `04_first_strategy_ma_crossover` | **Session 5.** Your first strategy: moving-average crossover, tested with the honest tools | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/04_first_strategy_ma_crossover.ipynb) |
+| `05_second_strategy_rsi` | **Session 5.** A second strategy: buy the dip, sell the rip, and whether it beats buy and hold | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/05_second_strategy_rsi.ipynb) |
+| `06_portfolios` | **Session 6.** Portfolios: weights, sector rotation, dual momentum, volatility targeting | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/06_portfolios.ipynb) |
+| `07_portfolio_risk_rules` | **Session 6.** Risk rules for a portfolio: limits, value at risk, four reactions through 2020 and 2022, what if | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/07_portfolio_risk_rules.ipynb) |
+| `08_alpha_beta_competition` | **Session 7.** Is the result real? Alpha, beta, t-stat and the alpha competition ([interactive explainer](https://kolyamkl.github.io/qm-fintech-quant-workshop/alpha-beta.html)) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/08_alpha_beta_competition.ipynb) |
+| `09_ai_risk_agent` | **Session 8.** An AI agent that reacts to a crash, checked by maths. Runs offline without a key | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/09_ai_risk_agent.ipynb) |
+| `take_home_dashboard` | **Take-home project:** build your own trading dashboard and run it on your computer ([details](projects/trading_dashboard/)) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/take_home_dashboard.ipynb) |
+| `appendix_library_comparison` | **Appendix:** the same strategy in backtesting.py, and why the numbers differ | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/appendix_library_comparison.ipynb) |
 
-## Workshop agenda (~1.5–2 hours)
+## Workshop agenda: eight sessions of about 60 minutes
 
-| Part | Time |
-|---|---|
-| Intro: what is algorithmic trading? (`00`) | 10–15 min |
-| Build and backtest a moving-average crossover (`01`) | ~60 min |
-| Demo: the interactive app | ~10 min |
-| If time allows: RSI mean reversion (`02`) | remaining |
-| Follow-up session: risk rules (`05`) and the AI agent (`06`) | ~45 min each |
-| Alpha, beta and the alpha competition (`07`) | ~45 min, then the competition runs until the deadline |
-| Q&A | ~10 min |
+Each session adds one idea to the last: why we test, how to measure, how a test can lie, how to limit losses, then strategies, portfolios, proving a result is real, and finally an AI agent.
+
+| Session | Topic | Notebook |
+|---|---|---|
+| 1 | What a trading strategy is, and why we test it on old prices first | `00` |
+| 2 | How much did it make, and how bumpy was the ride? | `01` |
+| 3 | How a backtest can lie | `02` |
+| 4 | Managing risk on one asset | `03` |
+| 5 | Your first strategies | `04`, `05` |
+| 6 | Portfolios and their risk rules | `06`, `07` |
+| 7 | Is the result real? Alpha, beta and the competition (the competition then runs until the deadline) | `08` |
+| 8 | An AI agent that reacts to a crash | `09` |
+
+The app demo and the take-home dashboard fit anywhere after session 2.
 
 ## Write your own strategy
 
@@ -64,7 +73,7 @@ result.summary()   # strategy vs buy-and-hold
 result.plot()      # portfolio value and drawdown
 ```
 
-Notebook `01` ends with a cell like this, ready to edit. To keep a strategy as a reusable file, start from `strategies/template.py`.
+Notebook `04` ends with a cell like this, ready to edit. To keep a strategy as a reusable file, start from `strategies/template.py`.
 
 ## What's in the repo
 
@@ -75,8 +84,9 @@ backtester/            the engine: data loading, run_backtest, metrics, charts
   risk.py              portfolio limits, Value at Risk, and a day-by-day replay that obeys them
   agent.py             an AI risk manager whose every proposal passes the same checks
   alpha.py             alpha and beta by regression, and the alpha competition scorer
-competition/           house strategies, entries/ (one file per team), leaderboard.md
-scripts/leaderboard.py scores every entry the same way and writes competition/leaderboard.md
+  honesty.py           toy strategies with a known answer, best-of-many luck, and walk-forward
+competition/           house strategies and entries/ (one file per team)
+scripts/leaderboard.py scores every entry the same way on the held-back period (the organiser keeps the result private)
 strategies/            ma_crossover, rsi_mean_reversion, and template.py for your own
 notebooks/             the workshop, step by step
 app/streamlit_app.py   interactive backtester
@@ -92,7 +102,7 @@ tests/                 checks that the engine computes correctly (run: pytest)
 
 `run_backtest` takes your daily positions, **shifts them by one day** (a decision made at today's close can only earn tomorrow's return — skipping this is the classic *look-ahead bias*), multiplies by the asset's daily returns, subtracts a trading cost whenever the position changes, and compounds the result from $10,000. Everything is compared with simply buying and holding. It deliberately leaves out slippage, borrowing fees for shorts, position sizing and multi-asset portfolios — those are exercises in [`docs/resources.md`](docs/resources.md).
 
-For several assets at once, `run_portfolio_backtest(closes, weights)` follows the same rules with **weights** (the share of money in each asset, the rest in cash), costs on every change of weight, and holdings that drift with prices between trades. `backtester/risk.py` turns limits such as *"never fall more than 15% from my peak"* into warning lines and replays a portfolio day by day under them; `backtester/agent.py` lets a language model propose the trades, but only the ones that pass the same fixed checks are made. Notebooks `05` and `06` walk through both.
+For several assets at once, `run_portfolio_backtest(closes, weights)` follows the same rules with **weights** (the share of money in each asset, the rest in cash), costs on every change of weight, and holdings that drift with prices between trades. `backtester/risk.py` turns limits such as *"never fall more than 15% from my peak"* into warning lines and replays a portfolio day by day under them; `backtester/agent.py` lets a language model propose the trades, but only the ones that pass the same fixed checks are made. Notebooks `03`, `07` and `09` walk through both.
 
 ## Optional: run it on your own laptop
 

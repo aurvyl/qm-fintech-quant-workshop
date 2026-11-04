@@ -105,6 +105,28 @@ def test_cash_exit_sells_everything_once_and_stays_out():
     assert result.weights.iloc[-1].sum() == pytest.approx(0.0)
 
 
+def test_exit_and_return_sells_then_buys_back_after_the_wait():
+    closes = random_closes(days=260)
+    crash = closes.copy()
+    crash.loc[crash.index[120]:, "RISKY"] *= 0.97 ** np.arange(1, len(crash) - 119)
+    result = risk.run_guarded(crash, {"RISKY": 0.4, "CALM": 0.2}, risk.Limits(0.10, 0.02), manager=risk.exit_and_return_manager)
+    out_day = result.log.loc[result.log["action"] == "all cash", "date"].iloc[0]
+    back_day = result.log.loc[result.log["action"] == "back in", "date"].iloc[0]
+    assert len(result.equity.loc[out_day:back_day]) - 1 >= risk.STAY_OUT_DAYS
+    assert result.metrics["Number of trades"] >= 2
+
+
+def test_cash_rate_grows_money_that_sits_in_cash():
+    closes = random_closes(days=200)
+    flat = closes.copy()
+    flat["CALM"] = 100.0
+    plain = risk.run_guarded(flat, {"CALM": 0.0, "RISKY": 0.0}, manager=None)
+    paid = risk.run_guarded(flat, {"CALM": 0.0, "RISKY": 0.0}, manager=None, cash_rate=0.05)
+    assert plain.equity.iloc[-1] == pytest.approx(10_000)
+    days = len(paid.equity) - 1
+    assert paid.equity.iloc[-1] == pytest.approx(10_000 * 1.05 ** (days / 252), rel=1e-6)
+
+
 def test_a_failing_plan_is_never_traded():
     closes = random_closes()
     crash = closes.copy()

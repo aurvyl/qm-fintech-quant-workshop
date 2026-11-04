@@ -5,7 +5,7 @@ Plain-English definitions of the terms used in this workshop, A–Z.
 | Term | Meaning |
 |---|---|
 | **Adjusted price** | Price history rewritten so stock splits and dividends don't appear as fake jumps; use it for returns and backtests. |
-| **AI agent** | A program in which a language model chooses actions, here new portfolio weights, from information and tools our code gives it. In notebook 06 the model proposes and fixed code decides. |
+| **AI agent** | A program in which a language model chooses actions, here new portfolio weights, from information and tools our code gives it. In notebook 09 the model proposes and fixed code decides. |
 | **Alpha** | Return a strategy earns beyond what its market exposure explains — the "skill" part. |
 | **Backtest** | A simulation of how a strategy would have performed on historical data. |
 | **Basis point (bp)** | One hundredth of a percent (0.01%). 5 bps = 0.05%. |

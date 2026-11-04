@@ -1,4 +1,4 @@
-"""Self-checks for notebook 04. Call check(your_function) to see if it's right.
+"""Self-checks for the take-home notebook. Call check(your_function) to see if it's right.
 
 Each check runs your function on a tiny made-up example and on real prices,
 and compares the answer with the reference solution in solution/analytics.py.

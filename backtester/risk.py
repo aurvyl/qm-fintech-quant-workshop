@@ -27,6 +27,7 @@ MAX_WEIGHT = 0.40
 RISK_LOOKBACK = 60
 COOLDOWN_DAYS = 5
 RERISK_AFTER_DAYS = 10
+STAY_OUT_DAYS = 60
 MAX_STEPS = 12
 MIN_TURNOVER = 0.02
 
@@ -246,6 +247,15 @@ def cash_exit_manager(context: dict) -> dict | None:
     return {} if losing else None
 
 
+def exit_and_return_manager(context: dict) -> dict | None:
+    """The fairer panic button: sell everything on the first real loss, wait, then buy back.
+
+    It reacts exactly like cash_exit_manager, but run_guarded puts the portfolio back to its
+    start weights after STAY_OUT_DAYS trading days (about three months) in cash, whatever the market did.
+    """
+    return cash_exit_manager(context)
+
+
 @dataclass
 class GuardedResult:
     """What a guarded portfolio did, day by day, and why."""
@@ -271,6 +281,7 @@ def run_guarded(
     start_cash: float = 10_000.0,
     name: str = "Guarded",
     warmup: int = RISK_LOOKBACK,
+    cash_rate: float = 0.0,
 ) -> GuardedResult:
     """Run a portfolio day by day under the investor's limits.
 
@@ -282,6 +293,7 @@ def run_guarded(
     calm:          tickers the manager may rotate into. Default: anything not in start_weights.
     After an emergency cut the peak is reset to the portfolio's value that day, so the limit then
     counts from the new, smaller portfolio instead of keeping it defensive for ever.
+    cash_rate:     yearly interest on money held in cash (0.03 = 3%). The default is 0. Sharpe is measured above it.
     Re-risking: after 10 quiet days with the drawdown back above half the rotate line, the
     portfolio steps 5% back towards its start weights, if check_plan allows it.
     The manager's plan is always re-checked here; a failing plan does not trade.
@@ -295,11 +307,12 @@ def run_guarded(
     lines = lines_from_limits(limits)
     returns = closes.pct_change()
 
+    cash_daily = (1 + cash_rate) ** (1 / TRADING_DAYS) - 1
     held = start.copy()
     nav = [start_cash]
     dates = closes.index[warmup:]
     weight_rows, log_rows = [held.copy()], []
-    pending, last_trade, quiet, peak = None, -COOLDOWN_DAYS - 1, 0, start_cash
+    pending, last_trade, quiet, peak, out_since = None, -COOLDOWN_DAYS - 1, 0, start_cash, 0
     for i, day in enumerate(dates):
         position = warmup + i
         cost = 0.0
@@ -310,10 +323,11 @@ def run_guarded(
             pending = None
         if i > 0:
             r = returns.iloc[position].fillna(0.0)
-            daily = float((held * r).sum()) - cost
+            idle = float(1 - held.sum())
+            daily = float((held * r).sum()) + idle * cash_daily - cost
             nav.append(nav[-1] * (1 + daily))
             grown = held * (1 + r)
-            total = float(grown.sum() + (1 - held.sum()))
+            total = float(grown.sum() + idle * (1 + cash_daily))
             held = grown / total if total > 0 else held * 0
             weight_rows.append(held.copy())
         history = returns.iloc[position - warmup + 1 : position + 1]
@@ -324,6 +338,15 @@ def run_guarded(
         var = one_day_var(held, history)
         kind, reasons = evaluate(drawdown, day_return, var, lines)
         cooling = i - last_trade <= COOLDOWN_DAYS
+        if manager is _wait_then_return and i - out_since >= STAY_OUT_DAYS and pending is None:
+            pending = start.copy()
+            peak = nav[-1]
+            last_trade = i
+            quiet = 0
+            manager = exit_and_return_manager
+            log_rows.append({"date": day, "trigger": None, "reasons": f"{STAY_OUT_DAYS} trading days in cash.", "action": "back in",
+                             "one_day_var": var, "turnover": float((start - held).abs().sum())})
+            continue
         if manager is None:
             continue
         if kind and not cooling:
@@ -349,9 +372,12 @@ def run_guarded(
             log_rows.append(row)
             if manager is cash_exit_manager and plan == {}:
                 manager = _stay_out
+            elif manager is exit_and_return_manager and plan == {}:
+                manager = _wait_then_return
+                out_since = i
         elif not kind:
             quiet += 1
-            if quiet >= RERISK_AFTER_DAYS and drawdown > -lines.rotate_at / 2 and manager not in (_stay_out, cash_exit_manager):
+            if quiet >= RERISK_AFTER_DAYS and drawdown > -lines.rotate_at / 2 and manager not in (_stay_out, _wait_then_return, cash_exit_manager, exit_and_return_manager):
                 step = _rerisk_step(held, start)
                 if step is not None and check_plan(_as_plan(step), history, lines, allowed).passed:
                     pending = step
@@ -364,11 +390,15 @@ def run_guarded(
     weights = pd.DataFrame(weight_rows, index=dates)
     hold_equity = start_cash * (closes.loc[dates] / closes.loc[dates].iloc[0] * start).sum(axis=1) / max(start.sum(), 1e-12)
     log = pd.DataFrame(log_rows, columns=["date", "trigger", "reasons", "action", "one_day_var", "turnover"])
-    metrics = guard_metrics(equity, limits, log, cost_bps)
+    metrics = guard_metrics(equity, limits, log, cost_bps, cash_rate)
     return GuardedResult(name=name, equity=equity, weights=weights, log=log, benchmark_equity=hold_equity, metrics=metrics)
 
 
 def _stay_out(context: dict) -> dict | None:
+    return None
+
+
+def _wait_then_return(context: dict) -> dict | None:
     return None
 
 
@@ -387,12 +417,12 @@ def _rerisk_step(held: pd.Series, start: pd.Series) -> pd.Series | None:
     return step if (step >= -1e-9).all() else None
 
 
-def guard_metrics(equity: pd.Series, limits: Limits, log: pd.DataFrame, cost_bps: float) -> dict:
+def guard_metrics(equity: pd.Series, limits: Limits, log: pd.DataFrame, cost_bps: float, cash_rate: float = 0.0) -> dict:
     """The usual metrics plus the ones an investor with limits cares about."""
     returns = equity.pct_change().iloc[1:]
-    metrics = compute_metrics(equity, returns)
+    metrics = compute_metrics(equity, returns, risk_free_rate=cash_rate)
     metrics.pop("Win rate")
-    trades = log[log["action"].isin(["rotate", "all cash", "re-risk 5%"])] if len(log) else log
+    trades = log[log["action"].isin(["rotate", "all cash", "re-risk 5%", "back in"])] if len(log) else log
     metrics["Number of trades"] = len(trades)
     metrics["Days over daily limit"] = int((returns <= -limits.max_daily_loss).sum())
     metrics["Worst day"] = float(returns.min()) if len(returns) else float("nan")

@@ -30,7 +30,7 @@ METRIC_HELP = {
     "Max drawdown": "The worst fall from a previous high: the most painful loss you would have had to sit through.",
 }
 
-# Overfitting lab: the same train/test split as notebook 01.
+# Overfitting lab: the same train/test split as notebook 02.
 TRAIN_END, TEST_START = "2021-12-31", "2022-01-01"
 LAB_FASTS = [10, 20, 30, 40, 50, 75, 100]
 LAB_SLOWS = [50, 100, 150, 200, 250, 300]
@@ -88,7 +88,7 @@ def risk_rules_tab(cost_bps: float) -> None:
         "Set two rules for a whole portfolio, in plain words, and replay 2019 to 2023 (the Covid crash and the "
         "2022 bear market) three ways: **do nothing**, **sell everything** at the first real loss, or **rotate** "
         "5% at a time from the riskiest holdings into calmer assets (bonds, gold, steady sectors). "
-        "Notebook 05 explains every step; notebook 06 lets an AI model do the rotating, inside the same rules."
+        "Notebook 07 explains every step; notebook 09 lets an AI model do the rotating, inside the same rules."
     )
     left, middle, right = st.columns(3)
     portfolio = left.selectbox("Portfolio (equal parts)", list(RISK_PORTFOLIOS))

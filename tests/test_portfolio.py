@@ -1,5 +1,6 @@
 import math
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -124,3 +125,12 @@ def test_recent_period_scores_the_last_fifth_on_its_own():
     assert table.loc["Total return", "Strategy"] == f"{399 / 339 - 1:.1%}"
     short = run_backtest(closes.iloc[:100], [1] * 100)
     assert recent_period(short) is None
+
+
+def test_recent_period_sharpe_is_lower_when_measured_above_cash():
+    rng = np.random.default_rng(0)
+    closes = closes_of(Close=list(100 * np.cumprod(1 + rng.normal(0.0005, 0.01, 400))))
+    result = run_backtest(closes, [1] * 400, cost_bps=0)
+    plain = float(recent_period(result).loc["Sharpe ratio", "Strategy"])
+    above_cash = float(recent_period(result, risk_free_rate=0.05).loc["Sharpe ratio", "Strategy"])
+    assert above_cash < plain
