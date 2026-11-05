@@ -7,7 +7,7 @@ A web page where teams paste guidance for the AI risk manager and compete on one
 1. Open the arena link, enter the team code you were given and a team name.
 2. Write up to 1,000 characters of guidance, for example "Prefer gold over bonds when you rotate. Keep tech in small steps."
 3. Press **Run my agent**. The entry joins a queue, runs with the others, and appears on the leaderboard with its growth line.
-4. Each team has 5 runs and one run at a time. The latest finished run is the one that counts.
+4. Each team has 100 runs and one run at a time. The latest finished run is the one that counts.
 
 ## How it is kept fair
 
@@ -53,4 +53,4 @@ After the session: `modal app stop workshop-arena`, and rotate or remove the cod
 
 ## Cost and limits
 
-An entry makes about 20 to 60 model calls. A class of 20 teams with 5 runs each is a few thousand calls, which is pence with the workshop model. The arena runs as one always-on container (about the cost of a small web server) with 6 parallel workers and a queue of at most 60 entries. State is saved to a Modal Dict, and unfinished entries run again if the container restarts.
+An entry makes about 20 to 60 model calls. A class of 20 teams using a handful of runs each is a few thousand calls, which is pence with the workshop model. The arena code on the model server still allows only 3,000 requests a day in total, so that is the real limit on how many runs happen. The arena runs as one always-on container (about the cost of a small web server) with 6 parallel workers and a queue of at most 60 entries. State is saved to a Modal Dict, and unfinished entries run again if the container restarts.
