@@ -191,6 +191,25 @@ def _reporter(agent, limited, prices: pd.DataFrame, progress):
     return report
 
 
+def _history(log: list) -> list:
+    holding = dict(START_WEIGHTS)
+    history = []
+    for entry in log:
+        day = f"{pd.Timestamp(entry['date']):%Y-%m-%d}"
+        plan = entry["plan"]
+        if plan:
+            trades = _trades(holding, plan)
+            history.append({
+                "date": day, "outcome": "plan passed",
+                "weights": {name: round(weight, 4) for name, weight in plan.items() if weight > 0},
+                "trades": trades, "direction": _direction(trades),
+            })
+            holding = {name: weight for name, weight in plan.items() if weight > 0}
+        else:
+            history.append({"date": day, "outcome": "held", "weights": None, "trades": [], "direction": "none"})
+    return list(reversed(history))
+
+
 def _replay(manager, name: str, prices: pd.DataFrame):
     return risk.run_guarded(prices[TECH + CALM], START_WEIGHTS, LIMITS, manager=manager, calm=CALM, name=name,
                             cash_rate=CASH_RATE)
@@ -223,7 +242,8 @@ def run_entry(guidance: str, ask, prices: pd.DataFrame | None = None, max_calls:
     """Replay the arena with a student's guidance and return everything the leaderboard shows.
 
     ask: function(prompt) -> reply text. The result holds the scores, a weekly equity curve (100 on the
-    first scored day), the agent's own checks (plans rejected, made-up numbers) and the first decisions.
+    first scored day), the agent's own checks (plans rejected, made-up numbers), the first decisions and
+    the holdings history (weights and trades only, newest first).
     progress: optional function(dict), called after each decision with the day reached, the share of the
     replay done, the counts so far and the agent's latest explanation.
     """
@@ -256,6 +276,7 @@ def run_entry(guidance: str, ask, prices: pd.DataFrame | None = None, max_calls:
         },
         "curve": _curve(result.equity),
         "decisions": decisions,
+        "holdings": _history(log),
     }
 
 

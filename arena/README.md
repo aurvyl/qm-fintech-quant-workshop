@@ -6,7 +6,7 @@ A web page where teams paste guidance for the AI risk manager and compete on one
 
 1. Open the arena link, enter the team code you were given and a team name.
 2. Write up to 1,000 characters of guidance, for example "Prefer gold over bonds when you rotate. Keep tech in small steps."
-3. Press **Run my agent**. The entry joins a queue, runs with the others, and appears on the leaderboard with its growth line.
+3. Press **Run my agent**. The entry joins a queue, runs with the others, and appears on the leaderboard, ranked by its overall score, with its growth line.
 4. Each team has 100 runs and one run at a time. The latest finished run is the one that counts.
 
 ## How it is kept fair
@@ -14,11 +14,12 @@ A web page where teams paste guidance for the AI risk manager and compete on one
 - The model sees dates and tickers hidden (`ASSET_A`, `ASSET_B`, ...). Tickers in a team's guidance are hidden the same way.
 - Every proposal still passes `check_plan`, the same fixed gate as the rule-based manager. Guidance cannot change the rules.
 - Each entry has a cap of 120 model calls and 20 minutes. Past the cap the portfolio simply holds.
-- Guidance and decision logs are private to the team until the organiser reveals them.
+- Guidance and the model's written explanations stay private to the team until the organiser reveals them.
+- Once a run finishes, every team can see its growth line, its buy and sell markers and its holdings history. Live progress is private until the run finishes.
 - The arena reaches the model through the workshop model server, so the key, the model and its limits stay there.
 - The leaderboard shows the bars to beat: buy and hold, the rule-based rotation and the market.
 
-The ranking is alpha a year. The t-stat is shown next to it, with a tick at 2 or more.
+Teams are ranked by an overall score from 0 to 100. It weighs five measures: alpha a year (40%), total return (25%), max drawdown (15%, where a smaller fall scores higher), Sharpe ratio (10%) and the alpha t-stat (10%). On each measure a team scores its percentile among all the teams, so a score moves as more teams run. A missing measure counts as the lowest. Alpha a year and the t-stat are still shown next to each team, with a tick at 2 or more.
 
 ## Try it on your computer, free
 

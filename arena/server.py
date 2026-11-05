@@ -38,6 +38,7 @@ MAX_ATTEMPTS = 100
 MAX_QUEUE = 60
 WORKERS = 6
 BAD_CODES_PER_MINUTE = 20
+SCORE_WEIGHTS = {"alpha_annual": 0.40, "total_return": 0.25, "sharpe": 0.10, "alpha_t": 0.10, "max_drawdown": 0.15}
 
 
 @dataclass
@@ -75,13 +76,36 @@ def _matches(code: str, known: list) -> bool:
     return any(hmac.compare_digest(given, k.encode()) for k in known)
 
 
+def _worst_if_missing(value) -> float:
+    return float("-inf") if value is None else value
+
+
+def _percentile(value, values: list) -> float:
+    if len(values) == 1:
+        return 0.5
+    mine = _worst_if_missing(value)
+    scores = [_worst_if_missing(v) for v in values]
+    below = sum(1 for s in scores if s < mine)
+    tied = sum(1 for s in scores if s == mine) - 1
+    return (below + tied / 2) / (len(values) - 1)
+
+
+def overall_scores(rows: list) -> None:
+    columns = {name: [row["metrics"].get(name) for row in rows] for name in SCORE_WEIGHTS}
+    total = sum(SCORE_WEIGHTS.values())
+    for index, row in enumerate(rows):
+        share = sum(weight * _percentile(columns[name][index], columns[name]) for name, weight in SCORE_WEIGHTS.items())
+        row["score"] = round(100 * share / total, 1)
+
+
 def _ranked(store: ArenaStore, baseline_rows: list) -> dict:
     teams = []
     for entry in store.latest_per_team():
         view = public_view(entry)
         view["attempts"] = store.attempts(entry["key"])
         teams.append(view)
-    teams.sort(key=lambda row: row["metrics"]["alpha_annual"], reverse=True)
+    overall_scores(teams)
+    teams.sort(key=lambda row: (row["score"], row["metrics"]["alpha_annual"]), reverse=True)
     for place, row in enumerate(teams, 1):
         row["rank"] = place
     waiting = store.teams_without_result()
@@ -162,6 +186,13 @@ def create_app(settings: Settings, run=run_entry, baseline_rows=None) -> FastAPI
         mine = bool(x_arena_code) and _matches(x_arena_code, settings.team_codes) and code_key(x_arena_code) == entry["key"]
         shown = mine or store.flag("reveal")
         return public_view(entry, include_guidance=shown, include_detail=shown)
+
+    @app.get("/api/entry/{entry_id}/holdings")
+    def entry_holdings(entry_id: int):
+        entry = store.get(entry_id)
+        if not entry or entry["status"] != "done":
+            raise HTTPException(404, "No holdings for that run yet.")
+        return {"team": entry["team"], "holdings": (entry.get("result") or {}).get("holdings", [])}
 
     @app.get("/api/mine")
     def mine(request: Request, x_arena_code: str = Header(default="")):

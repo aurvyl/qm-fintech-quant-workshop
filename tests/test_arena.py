@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from arena.demo_model import ask as demo_ask  # noqa: E402
 from arena.server import Settings, create_app  # noqa: E402
+from arena.server import overall_scores  # noqa: E402
 from arena.store import ArenaStore, FilePersistence, public_view  # noqa: E402
 from backtester import arena  # noqa: E402
 
@@ -112,7 +113,7 @@ def test_only_a_valid_team_code_can_submit():
     assert client.get("/api/mine", headers={"x-arena-code": "wrong-code-123"}).status_code == 403
 
 
-def test_leaderboard_ranks_teams_by_alpha_and_lists_the_bars():
+def test_leaderboard_ranks_teams_by_overall_score_and_lists_the_bars():
     client, app = make_client()
     assert post(client, CODES[0], "Short", "Prefer gold when you rotate.").status_code == 202
     assert post(client, CODES[1], "Long", "Prefer gold when you rotate, and keep tech in small steps always.").status_code == 202
@@ -120,8 +121,86 @@ def test_leaderboard_ranks_teams_by_alpha_and_lists_the_bars():
     board = client.get("/api/state").json()
     assert [t["team"] for t in board["teams"]] == ["Long", "Short"]
     assert [t["rank"] for t in board["teams"]] == [1, 2]
+    assert board["teams"][0]["score"] > board["teams"][1]["score"]
     assert board["baselines"][0]["name"] == "Buy and hold"
     assert "guidance" not in board["teams"][0]
+
+
+def test_alpha_counts_most_in_the_overall_score():
+    alpha_leader = {"metrics": {"alpha_annual": 0.10, "total_return": 0.05, "sharpe": 0.2, "alpha_t": 1.0, "max_drawdown": -0.20}}
+    return_leader = {"metrics": {"alpha_annual": 0.02, "total_return": 0.90, "sharpe": 0.2, "alpha_t": 1.0, "max_drawdown": -0.20}}
+    rows = [alpha_leader, return_leader]
+    overall_scores(rows)
+    assert alpha_leader["score"] > return_leader["score"]
+
+
+def test_a_single_team_scores_fifty():
+    row = {"metrics": {"alpha_annual": 0.1, "total_return": 0.5, "sharpe": 1.0, "alpha_t": 2.0, "max_drawdown": -0.1}}
+    overall_scores([row])
+    assert row["score"] == 50.0
+
+
+def test_a_missing_metric_counts_as_worst():
+    good = {"metrics": {"alpha_annual": 0.1, "total_return": 0.5, "sharpe": 1.0, "alpha_t": 2.0, "max_drawdown": -0.1}}
+    missing = {"metrics": {"alpha_annual": 0.1, "total_return": 0.5, "sharpe": None, "alpha_t": 2.0, "max_drawdown": None}}
+    rows = [good, missing]
+    overall_scores(rows)
+    assert good["score"] > missing["score"]
+
+
+def test_holdings_are_only_served_for_finished_runs():
+    client, app = make_client()
+    post(client, CODES[0], "Mine", "Prefer gold when you rotate.")
+    wait_idle(app)
+    entry_id = client.get("/api/mine", headers={"x-arena-code": CODES[0]}).json()["entries"][0]["id"]
+    response = client.get(f"/api/entry/{entry_id}/holdings")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["team"] == "Mine" and body["holdings"] == []
+    assert "guidance" not in body and "explanation" not in str(body)
+    assert client.get("/api/entry/999999/holdings").status_code == 404
+
+
+def test_teams_without_a_finished_run_have_no_holdings():
+    release = threading.Event()
+
+    def slow(guidance, ask, progress=None):
+        release.wait(2)
+        return canned(0.1)
+
+    client, app = make_client(run=slow)
+    post(client, CODES[0], "Waiting", "Prefer gold when you rotate.")
+    board = client.get("/api/state").json()
+    assert board["teams"] == []
+    assert [row["team"] for row in board["waiting"]] == ["Waiting"]
+    entry_id = client.get("/api/mine", headers={"x-arena-code": CODES[0]}).json()["entries"][0]["id"]
+    response = client.get(f"/api/entry/{entry_id}/holdings")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "No holdings for that run yet."}
+    release.set()
+    wait_idle(app)
+
+
+def test_old_results_without_holdings_return_an_empty_list():
+    client, app = make_client()
+    post(client, CODES[0], "Old", "Prefer gold when you rotate.")
+    wait_idle(app)
+    entry_id = client.get("/api/mine", headers={"x-arena-code": CODES[0]}).json()["entries"][0]["id"]
+    assert "holdings" not in app.state.store.get(entry_id)["result"]
+    assert client.get(f"/api/entry/{entry_id}/holdings").json() == {"team": "Old", "holdings": []}
+
+
+def test_holdings_carry_weights_and_trades_but_no_text():
+    prices = arena.arena_prices()
+
+    def ask(prompt):
+        return '{"weights": {"ASSET_A": 0.2, "ASSET_B": 0.2, "ASSET_C": 0.2, "ASSET_D": 0.2, "ASSET_E": 0.2}, "explanation": "Hold the mix."}'
+
+    result = arena.run_entry("Prefer calm assets when stressed.", ask, prices=prices, max_calls=6)
+    holdings = result["holdings"]
+    assert holdings and all(set(h) == {"date", "outcome", "weights", "trades", "direction"} for h in holdings)
+    assert [h["date"] for h in holdings] == sorted((h["date"] for h in holdings), reverse=True)
+    assert all(h["direction"] in ("none", "cut", "add", "swap") for h in holdings)
 
 
 def test_one_run_at_a_time_a_fixed_number_of_runs_and_unique_names():
