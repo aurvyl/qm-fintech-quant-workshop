@@ -22,6 +22,8 @@ Led by **Adnan Salehin** (Lead SWE & VP, JPMorgan) · Organised by **QM FinTech 
 
 **Just want to play, no code?** Try the 🌐 interactive app: **[qmfintech-workshop.streamlit.app](https://qmfintech-workshop.streamlit.app)**
 
+**Our web app, the agent arena:** **[aurvyl-prod--workshop-arena.us-east.modal.run](https://aurvyl-prod--workshop-arena.us-east.modal.run)**. Enter your team code, write guidance for the AI risk manager, and climb one leaderboard.
+
 ### All notebooks
 
 | Notebook | What it covers | Colab |
