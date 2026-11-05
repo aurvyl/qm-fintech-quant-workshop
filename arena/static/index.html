@@ -66,8 +66,8 @@ canvas { width: 100%; height: 280px; display: block; }
 .feed { max-height: 320px; overflow: auto; margin-top: 6px; border: 1px solid var(--line); border-radius: 6px; }
 .feeditem { padding: 8px 10px; border-top: 1px solid var(--line); font-size: 0.85rem; }
 .feeditem:first-child { border-top: 0; }
-.feeditem.held strong { color: var(--bad); }
-.feeditem.passed strong { color: var(--good); }
+.feeditem .sell { color: var(--bad); }
+.feeditem .buy { color: var(--good); }
 .live { color: var(--muted); font-size: 0.85rem; }
 .run pre { white-space: pre-wrap; word-break: break-word; margin: 6px 0 0; font: inherit; color: var(--muted); }
 .decisions { font-size: 0.85rem; margin-top: 8px; }
@@ -131,7 +131,7 @@ canvas { width: 100%; height: 280px; display: block; }
 <script>
 const $ = (id) => document.getElementById(id);
 const COLORS = ["--c1", "--c2", "--c3", "--c4", "--c5"];
-let state = null, curves = {}, picked = null, timer = null, mine = null;
+let state = null, curves = {}, picked = null, timer = null, mine = null, showQuiet = false;
 
 function store(key, value) { try { if (value === undefined) return localStorage.getItem(key) || ""; localStorage.setItem(key, value); } catch (e) { return ""; } }
 function pct(v, digits = 1, sign = false) { return v === null || v === undefined ? "n/a" : (sign && v > 0 ? "+" : "") + (v * 100).toFixed(digits) + "%"; }
@@ -220,9 +220,15 @@ function drawChart() {
   for (const s of series.filter((t) => t.live)) {
     for (const d of s.live) {
       const before = s.data.filter((p) => p[0] <= d.date); if (!before.length) continue;
-      const p = before[before.length - 1], held = d.outcome === "held";
-      g.beginPath(); g.arc(x(p[0]), y(p[1]), 4, 0, Math.PI * 2);
-      g.fillStyle = held ? color("--bad") : color("--good"); g.fill(); g.strokeStyle = color("--card"); g.lineWidth = 1.5; g.stroke();
+      const p = before[before.length - 1], px = x(p[0]), py = y(p[1]);
+      const kind = d.outcome === "held" ? "held" : d.direction;
+      const fill = kind === "held" ? color("--bad") : kind === "cut" ? color("--bad") : kind === "add" ? color("--good") : color("--muted");
+      g.beginPath();
+      if (kind === "cut") { g.moveTo(px - 6, py - 8); g.lineTo(px + 6, py - 8); g.lineTo(px, py + 1); g.closePath(); }
+      else if (kind === "add") { g.moveTo(px - 6, py + 8); g.lineTo(px + 6, py + 8); g.lineTo(px, py - 1); g.closePath(); }
+      else if (kind === "swap") { g.rect(px - 4, py - 4, 8, 8); }
+      else { g.arc(px, py, kind === "held" ? 4 : 2.5, 0, Math.PI * 2); }
+      g.fillStyle = fill; g.fill(); g.strokeStyle = color("--card"); g.lineWidth = 1.2; g.stroke();
     }
   }
   const legend = $("legend"); legend.replaceChildren();
@@ -231,7 +237,7 @@ function drawChart() {
     dot.className = "swatch"; dot.style.background = s.bar ? color("--muted") : s.color; item.appendChild(dot);
     item.appendChild(document.createTextNode(s.name)); legend.appendChild(item);
   }
-  if (running) { const note = document.createElement("span"); note.textContent = "Green dot: plan passed. Red dot: held."; legend.appendChild(note); }
+  if (running) { const note = document.createElement("span"); note.textContent = "Down triangle: sold tech. Up triangle: bought tech. Square: swapped within calm or tech. Grey dot: no change. Red dot: held."; legend.appendChild(note); }
 }
 
 async function refresh() {
@@ -286,12 +292,23 @@ async function loadMine(quiet) {
         holdCanvas.setAttribute("aria-label", "Holdings after each decision, oldest on the left");
         div.appendChild(holdCanvas); const holdLegend = document.createElement("div"); holdLegend.className = "live"; div.appendChild(holdLegend);
         after.push(() => drawHoldings(holdCanvas, holdLegend, p.feed));
+        const toggleLabel = document.createElement("label"); toggleLabel.className = "live";
+        const toggleBox = document.createElement("input"); toggleBox.type = "checkbox"; toggleBox.checked = showQuiet; toggleBox.style.width = "auto"; toggleBox.style.marginRight = "6px";
+        toggleBox.addEventListener("change", () => { showQuiet = toggleBox.checked; loadMine(true); });
+        toggleLabel.appendChild(toggleBox); toggleLabel.appendChild(document.createTextNode("Also show decisions with no trades")); div.appendChild(toggleLabel);
         const feed = document.createElement("div"); feed.className = "feed"; feed.setAttribute("aria-live", "polite");
-        for (const d of p.feed) {
+        const shown = p.feed.filter((d) => showQuiet || d.outcome === "held" || d.trades.length);
+        if (!shown.length) { const none = document.createElement("div"); none.className = "feeditem"; none.textContent = "No trades in the latest decisions."; feed.appendChild(none); }
+        for (const d of shown) {
           const row = document.createElement("div"); row.className = "feeditem " + (d.outcome === "held" ? "held" : "passed");
-          const trades = d.trades.length ? d.trades.map(([n, w]) => `${w > 0 ? "buy" : "sell"} ${n} ${Math.abs(Math.round(w * 100))}%`).join(", ") : "no change";
-          const title = document.createElement("strong"); title.textContent = `${d.date} (${d.trigger}): ${d.outcome === "held" ? "held, no valid plan" : trades}`;
-          row.appendChild(title);
+          const title = document.createElement("strong"); title.textContent = `${d.date} (${d.trigger}): `; row.appendChild(title);
+          if (d.outcome === "held") { const held = document.createElement("strong"); held.className = "sell"; held.textContent = "held, no valid plan"; row.appendChild(held); }
+          else if (!d.trades.length) { const none = document.createElement("span"); none.textContent = "no trades"; row.appendChild(none); }
+          else d.trades.forEach(([n, w], i) => {
+            const t = document.createElement("strong"); t.className = w > 0 ? "buy" : "sell";
+            t.textContent = `${w > 0 ? "buy" : "sell"} ${n} ${Math.abs(Math.round(w * 100))}%`; row.appendChild(t);
+            if (i < d.trades.length - 1) row.appendChild(document.createTextNode(", "));
+          });
           const why = d.outcome === "held" ? `Rejected ${d.attempts} time${d.attempts === 1 ? "" : "s"}. ${d.rejected.join(" ")}` : `${d.attempts > 1 ? `Passed on attempt ${d.attempts}. ` : ""}${d.explanation}`;
           const text = document.createElement("div"); text.textContent = why; row.appendChild(text);
           feed.appendChild(row);

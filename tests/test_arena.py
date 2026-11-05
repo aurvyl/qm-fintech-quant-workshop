@@ -227,6 +227,7 @@ def test_progress_is_reported_and_kept_private():
     assert seen and seen[-1]["calls"] <= 6 and 0 <= seen[-1]["percent"] <= 100
     assert seen[-1]["decisions"] == len(seen)
     assert seen[-1]["feed"][0]["date"] == seen[-1]["day"]
+    assert all(d["direction"] in ("none", "cut", "add", "swap") for d in seen[-1]["feed"])
     curve = seen[-1]["curve"]
     assert curve and curve[0][1] > 0 and curve[0][0] >= arena.SCORE_START
     passed = [d for d in seen[-1]["feed"] if d["outcome"] == "plan passed"]

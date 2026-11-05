@@ -149,6 +149,13 @@ def _live_curve(nav, index: pd.DatetimeIndex) -> list:
     return _curve(equity)
 
 
+def _direction(trades: list) -> str:
+    if not trades:
+        return "none"
+    tech = sum(move for name, move in trades if name in TECH)
+    return "cut" if tech < -TRADE_THRESHOLD else "add" if tech > TRADE_THRESHOLD else "swap"
+
+
 def _reporter(agent, limited, prices: pd.DataFrame, progress):
     first, last = prices.index[0], prices.index[-1]
     span = max((last - first).days, 1)
@@ -160,11 +167,12 @@ def _reporter(agent, limited, prices: pd.DataFrame, progress):
         plan = entry["plan"]
         reasons = [reason for attempt in entry["attempts"] for reason in attempt.get("reasons", []) or [attempt.get("error")]
                    if reason and not attempt.get("passed", False)]
+        trades = _trades(state["holding"], plan) if plan else []
         item = {
             "date": f"{day:%Y-%m-%d}", "trigger": entry["trigger"], "attempts": len(entry["attempts"]),
             "outcome": "plan passed" if plan else "held",
             "weights": {name: round(weight, 4) for name, weight in plan.items() if weight > 0} if plan else None,
-            "trades": _trades(state["holding"], plan) if plan else [],
+            "trades": trades, "direction": _direction(trades),
             "rejected": reasons[:3],
             "explanation": unmask_text(entry["explanation"])[:300] if plan else "",
         }
