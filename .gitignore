@@ -12,3 +12,6 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# Organiser output: shows the scored period, never publish
+competition/leaderboard.md

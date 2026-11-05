@@ -1,6 +1,6 @@
 """Trading dashboard: your web app. ✏️ Fill in the TODOs.
 
-Before you start: copy your functions from notebook 04 into analytics.py (next to this file).
+Before you start: copy your functions from the take-home notebook into analytics.py (next to this file).
 Each TODO replaces one st.info(...) placeholder. Stuck? See solution/app.py.
 """
 

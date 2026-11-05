@@ -6,7 +6,7 @@ matplotlib==3.11.2
 jupyterlab==4.6.4
 # App
 streamlit==1.65.0
-# Notebook 03 only: comparison with a popular library
+# Appendix notebook only: comparison with a popular library
 backtesting==0.6.6
 # scripts/download_data.py only
 yfinance==1.7.0

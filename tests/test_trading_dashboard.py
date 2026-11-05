@@ -107,5 +107,5 @@ def test_starter_app_runs_once_analytics_is_filled_in():
 
 def test_starter_analytics_says_what_to_do():
     starter = load_module(PROJECT / "analytics.py", "dashboard_starter_for_tests")
-    with pytest.raises(NotImplementedError, match="notebook 04"):
+    with pytest.raises(NotImplementedError, match="the take-home notebook"):
         starter.to_returns(pd.Series([1.0, 2.0]))

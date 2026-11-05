@@ -2,7 +2,7 @@
 
 A web app that shows how an investment performed, how risky it was, and how much of its movement is just the market (CAPM). You build every number yourself, then run the app on your own computer from a terminal.
 
-**Start with the notebook:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/04_project_trading_dashboard.ipynb)
+**Start with the notebook:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/take_home_dashboard.ipynb)
 
 ## What the finished app shows
 
@@ -15,7 +15,7 @@ A web app that shows how an investment performed, how risky it was, and how much
 ## The files
 
 ```
-analytics.py           ✏️ your calculations: copy your functions here from notebook 04
+analytics.py           ✏️ your calculations: copy your functions here from the take-home notebook
 app.py                 ✏️ the web page, with five TODOs to fill in
 checks.py              the ✅ / ❌ checks used by the notebook
 solution/analytics.py  reference answers for every function
@@ -24,7 +24,7 @@ solution/app.py        the finished app
 
 ## Steps
 
-1. **Write the functions** in notebook `04_project_trading_dashboard` (Colab or `jupyter lab`). Each step has a hint and a check.
+1. **Write the functions** in notebook `take_home_dashboard` (Colab or `jupyter lab`). Each step has a hint and a check.
 2. **Get the code on your computer.** You need Python 3.11 or newer and git:
 
    ```bash
