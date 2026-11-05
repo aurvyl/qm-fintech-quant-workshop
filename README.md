@@ -14,7 +14,7 @@ Led by **Adnan Salehin** (Lead SWE & VP, JPMorgan) · Organised by **QM FinTech 
 
 👉 **Workshop page: [kolyamkl.github.io/qm-fintech-quant-workshop](https://kolyamkl.github.io/qm-fintech-quant-workshop/)**: every notebook opens in Colab in a **new tab**. (Buttons on this GitHub page open in the same tab; Cmd/Ctrl-click to open a new one.)
 
-1. Open the first notebook: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/00_why_test_a_trading_idea.ipynb)
+1. Open the first notebook: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurvyl/qm-fintech-quant-workshop/blob/main/notebooks/00_why_test_a_trading_idea.ipynb)
 2. If Colab warns that the notebook wasn't written by Google, click **Run anyway**.
 3. Click **File → Save a copy in Drive**, so your changes are kept.
 4. Run the first cell (**▶ Setup**). It downloads the workshop code and data into your Colab session.
@@ -28,18 +28,18 @@ Led by **Adnan Salehin** (Lead SWE & VP, JPMorgan) · Organised by **QM FinTech 
 
 | Notebook | What it covers | Colab |
 |---|---|---|
-| `00_why_test_a_trading_idea` | **Session 1.** What a trading strategy is, and why we test it on old prices first | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/00_why_test_a_trading_idea.ipynb) |
-| `01_returns_and_risk` | **Session 2.** How much did it make, and how bumpy was the ride? Returns, volatility, worst fall, Sharpe ratio | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/01_returns_and_risk.ipynb) |
-| `02_backtest_honesty` | **Session 3.** How a backtest can lie: peeking at the future, costs, luck, train and test, walk-forward | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/02_backtest_honesty.ipynb) |
-| `03_risk_limits_one_asset` | **Session 4.** Managing risk: limits in plain words, warning lines, value at risk, three reactions to a crash | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/03_risk_limits_one_asset.ipynb) |
-| `04_first_strategy_ma_crossover` | **Session 5.** Your first strategy: moving-average crossover, tested with the honest tools | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/04_first_strategy_ma_crossover.ipynb) |
-| `05_second_strategy_rsi` | **Session 5.** A second strategy: buy the dip, sell the rip, and whether it beats buy and hold | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/05_second_strategy_rsi.ipynb) |
-| `06_portfolios` | **Session 6.** Portfolios: weights, sector rotation, dual momentum, volatility targeting | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/06_portfolios.ipynb) |
-| `07_portfolio_risk_rules` | **Session 6.** Risk rules for a portfolio: limits, value at risk, four reactions through 2020 and 2022, what if | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/07_portfolio_risk_rules.ipynb) |
-| `08_alpha_beta_competition` | **Session 7.** Is the result real? Alpha, beta, t-stat and the alpha competition ([interactive explainer](https://kolyamkl.github.io/qm-fintech-quant-workshop/alpha-beta.html)) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/08_alpha_beta_competition.ipynb) |
-| `09_ai_risk_agent` | **Session 8.** An AI agent that reacts to a crash, checked by maths. Runs offline without a key | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/09_ai_risk_agent.ipynb) |
-| `take_home_dashboard` | **Take-home project:** build your own trading dashboard and run it on your computer ([details](projects/trading_dashboard/)) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/take_home_dashboard.ipynb) |
-| `appendix_library_comparison` | **Appendix:** the same strategy in backtesting.py, and why the numbers differ | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/appendix_library_comparison.ipynb) |
+| `00_why_test_a_trading_idea` | **Session 1.** What a trading strategy is, and why we test it on old prices first | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurvyl/qm-fintech-quant-workshop/blob/main/notebooks/00_why_test_a_trading_idea.ipynb) |
+| `01_returns_and_risk` | **Session 2.** How much did it make, and how bumpy was the ride? Returns, volatility, worst fall, Sharpe ratio | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurvyl/qm-fintech-quant-workshop/blob/main/notebooks/01_returns_and_risk.ipynb) |
+| `02_backtest_honesty` | **Session 3.** How a backtest can lie: peeking at the future, costs, luck, train and test, walk-forward | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurvyl/qm-fintech-quant-workshop/blob/main/notebooks/02_backtest_honesty.ipynb) |
+| `03_risk_limits_one_asset` | **Session 4.** Managing risk: limits in plain words, warning lines, value at risk, three reactions to a crash | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurvyl/qm-fintech-quant-workshop/blob/main/notebooks/03_risk_limits_one_asset.ipynb) |
+| `04_first_strategy_ma_crossover` | **Session 5.** Your first strategy: moving-average crossover, tested with the honest tools | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurvyl/qm-fintech-quant-workshop/blob/main/notebooks/04_first_strategy_ma_crossover.ipynb) |
+| `05_second_strategy_rsi` | **Session 5.** A second strategy: buy the dip, sell the rip, and whether it beats buy and hold | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurvyl/qm-fintech-quant-workshop/blob/main/notebooks/05_second_strategy_rsi.ipynb) |
+| `06_portfolios` | **Session 6.** Portfolios: weights, sector rotation, dual momentum, volatility targeting | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurvyl/qm-fintech-quant-workshop/blob/main/notebooks/06_portfolios.ipynb) |
+| `07_portfolio_risk_rules` | **Session 6.** Risk rules for a portfolio: limits, value at risk, four reactions through 2020 and 2022, what if | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurvyl/qm-fintech-quant-workshop/blob/main/notebooks/07_portfolio_risk_rules.ipynb) |
+| `08_alpha_beta_competition` | **Session 7.** Is the result real? Alpha, beta, t-stat and the alpha competition ([interactive explainer](https://kolyamkl.github.io/qm-fintech-quant-workshop/alpha-beta.html)) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurvyl/qm-fintech-quant-workshop/blob/main/notebooks/08_alpha_beta_competition.ipynb) |
+| `09_ai_risk_agent` | **Session 8.** An AI agent that reacts to a crash, checked by maths. Runs offline without a key | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurvyl/qm-fintech-quant-workshop/blob/main/notebooks/09_ai_risk_agent.ipynb) |
+| `take_home_dashboard` | **Take-home project:** build your own trading dashboard and run it on your computer ([details](projects/trading_dashboard/)) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurvyl/qm-fintech-quant-workshop/blob/main/notebooks/take_home_dashboard.ipynb) |
+| `appendix_library_comparison` | **Appendix:** the same strategy in backtesting.py, and why the numbers differ | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurvyl/qm-fintech-quant-workshop/blob/main/notebooks/appendix_library_comparison.ipynb) |
 
 ## Workshop agenda: eight sessions of about 60 minutes
 
@@ -117,7 +117,7 @@ Not needed for the workshop — everything above runs in the cloud. Use this if 
 You need **Python 3.11 or newer** ([python.org/downloads](https://www.python.org/downloads/)) and **git**.
 
 ```bash
-git clone https://github.com/kolyamkl/qm-fintech-quant-workshop.git
+git clone https://github.com/aurvyl/qm-fintech-quant-workshop.git
 cd qm-fintech-quant-workshop
 python -m venv .venv
 ```
@@ -143,7 +143,7 @@ streamlit run app/streamlit_app.py  # opens the interactive app
 The hosted app runs on [Streamlit Community Cloud](https://streamlit.io/cloud) (free). With the repo pushed to GitHub:
 
 1. Sign in at [share.streamlit.io](https://share.streamlit.io) with the GitHub account that owns the repo.
-2. Click **Create app** and choose repository `kolyamkl/qm-fintech-quant-workshop`, branch `main`, main file path `app/streamlit_app.py`.
+2. Click **Create app** and choose repository `aurvyl/qm-fintech-quant-workshop`, branch `main`, main file path `app/streamlit_app.py`.
 3. Click **Deploy**. The live app is at <https://qmfintech-workshop.streamlit.app> and redeploys automatically on every push to `main`.
 
 After a push that changes `backtester/` or `strategies/`, click **Manage app → Reboot app** on the live site. Streamlit reloads `app/` by itself but keeps the old versions of those two folders in memory, so without a reboot the app can crash with an `ImportError`.

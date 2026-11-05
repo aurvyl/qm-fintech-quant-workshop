@@ -2,7 +2,7 @@
 
 A web app that shows how an investment performed, how risky it was, and how much of its movement is just the market (CAPM). You build every number yourself, then run the app on your own computer from a terminal.
 
-**Start with the notebook:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/take_home_dashboard.ipynb)
+**Start with the notebook:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aurvyl/qm-fintech-quant-workshop/blob/main/notebooks/take_home_dashboard.ipynb)
 
 ## What the finished app shows
 
@@ -28,7 +28,7 @@ solution/app.py        the finished app
 2. **Get the code on your computer.** You need Python 3.11 or newer and git:
 
    ```bash
-   git clone https://github.com/kolyamkl/qm-fintech-quant-workshop.git
+   git clone https://github.com/aurvyl/qm-fintech-quant-workshop.git
    cd qm-fintech-quant-workshop
    python -m venv .venv
    source .venv/bin/activate          # Windows (PowerShell): .venv\Scripts\Activate.ps1

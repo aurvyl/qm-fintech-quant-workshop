@@ -11,7 +11,7 @@
 
 Roughly easy → hard. Each builds on the code in this repo.
 
-**Looking for a bigger project?** Build and publish your own trading dashboard, step by step: notebook [`take_home_dashboard`](https://colab.research.google.com/github/kolyamkl/qm-fintech-quant-workshop/blob/main/notebooks/take_home_dashboard.ipynb).
+**Looking for a bigger project?** Build and publish your own trading dashboard, step by step: notebook [`take_home_dashboard`](https://colab.research.google.com/github/aurvyl/qm-fintech-quant-workshop/blob/main/notebooks/take_home_dashboard.ipynb).
 
 **Warm-up**
 1. Run the MA crossover on every ticker in the dataset (`backtester.available_tickers()`). Which does it work best on? Worst?

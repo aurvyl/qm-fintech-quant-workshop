@@ -13,7 +13,7 @@ import pandas as pd
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_PATH = REPO_ROOT / "data" / "prices.csv"
 # Used when the CSV isn't on disk — e.g. a notebook opened in Colab without the repo.
-DATA_URL = "https://raw.githubusercontent.com/kolyamkl/qm-fintech-quant-workshop/main/data/prices.csv"
+DATA_URL = "https://raw.githubusercontent.com/aurvyl/qm-fintech-quant-workshop/main/data/prices.csv"
 
 PRICE_COLUMNS = ["Open", "High", "Low", "Close", "Volume"]
 
