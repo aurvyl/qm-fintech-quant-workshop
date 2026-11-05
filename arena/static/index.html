@@ -72,6 +72,11 @@ canvas { width: 100%; height: 280px; display: block; }
 .run pre { white-space: pre-wrap; word-break: break-word; margin: 6px 0 0; font: inherit; color: var(--muted); }
 .decisions { font-size: 0.85rem; margin-top: 8px; }
 .decisions div { padding: 6px 0; border-top: 1px solid var(--line); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.chips button { display: inline-flex; align-items: center; }
+.chips button[aria-pressed="false"] { color: var(--muted); }
+.chips button[aria-pressed="true"] { background: var(--bar); color: var(--text); }
+@media (pointer: coarse) { .chips button { min-height: 44px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -88,9 +93,16 @@ canvas { width: 100%; height: 280px; display: block; }
   <section class="card" aria-labelledby="h-chart">
       <h2 id="h-chart">Growth of 100</h2>
       <canvas id="chart" role="img" aria-label="Growth of 100 for the picked teams and the bars to beat"></canvas>
+      <div id="chips" class="chips" role="group" aria-label="Teams on the chart"></div>
       <div id="legend" class="legend"></div>
       <p class="muted" style="font-size:0.8rem;margin:10px 0 0">Click a team in the table to add or remove it.</p>
     </section>
+
+  <section class="card" aria-labelledby="h-holdings">
+    <h2 id="h-holdings">Holdings by team</h2>
+    <p class="muted" style="font-size:0.8rem;margin:0 0 8px">Each column is one decision. Stacks show what the team held afterwards, oldest on the left.</p>
+    <div id="holdings"></div>
+  </section>
 
   <div class="grid">
     <section class="card" aria-labelledby="h-submit">
@@ -115,9 +127,9 @@ canvas { width: 100%; height: 280px; display: block; }
 
   <section class="card" aria-labelledby="h-board">
     <h2 id="h-board">Leaderboard</h2>
-    <p class="muted" style="font-size:0.85rem">Ranked by alpha a year: what is left after taking the market out. A tick means the t-stat is 2 or more, so it is unlikely to be luck. Grey rows are the bars to beat.</p>
+    <p class="muted" style="font-size:0.85rem">Ranked by overall score. Alpha counts 40%, total return 25%, Sharpe 10%, t-stat 10% and worst fall 15%. Each measure is scored against the other teams, so scores move as more teams run. A tick means the t-stat is 2 or more. Grey rows are the bars to beat.</p>
     <div class="scroll"><table id="board"><thead><tr>
-      <th>#</th><th>Team</th><th>Alpha / year</th><th>t-stat</th><th>Beta</th><th>Total return</th><th>Worst fall</th><th>Days over limit</th><th>Plans rejected</th><th>Runs</th>
+      <th>#</th><th>Team</th><th>Score</th><th>Alpha / year</th><th>t-stat</th><th>Beta</th><th>Sharpe</th><th>Total return</th><th>Worst fall</th><th>Days over limit</th><th>Plans rejected</th><th>Runs</th>
     </tr></thead><tbody></tbody></table></div>
     <p id="empty" class="muted" hidden style="margin-top:12px">No results yet. Be the first to run.</p>
     <p id="waiting" class="muted" style="font-size:0.85rem;margin-top:12px"></p>
@@ -130,14 +142,19 @@ canvas { width: 100%; height: 280px; display: block; }
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
-const COLORS = ["--c1", "--c2", "--c3", "--c4", "--c5"];
 let state = null, curves = {}, picked = null, timer = null, mine = null, showQuiet = false;
+const holdingsByEntry = new Map();
+let chipKey = null;
 
 function store(key, value) { try { if (value === undefined) return localStorage.getItem(key) || ""; localStorage.setItem(key, value); } catch (e) { return ""; } }
 function pct(v, digits = 1, sign = false) { return v === null || v === undefined ? "n/a" : (sign && v > 0 ? "+" : "") + (v * 100).toFixed(digits) + "%"; }
 function cls(v) { return v > 0 ? "pos" : v < 0 ? "neg" : ""; }
 function cell(tr, text, className) { const td = document.createElement("td"); td.textContent = text; if (className) td.className = className; tr.appendChild(td); return td; }
 function color(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function teamColor(name) {
+  const names = state.teams.map((t) => t.team).sort((a, b) => a.localeCompare(b));
+  return `hsl(${(Math.max(0, names.indexOf(name)) * 137.5) % 360} 72% 50%)`;
+}
 
 async function api(path, options = {}) {
   const response = await fetch(path, options);
@@ -150,9 +167,9 @@ function renderBoard() {
   const body = $("board").querySelector("tbody");
   body.replaceChildren();
   const rows = [
-    ...state.teams.map((t) => ({ kind: "team", name: t.team, rank: t.rank, m: t.metrics, a: t.agent, runs: t.attempts })),
-    ...state.baselines.map((b) => ({ kind: "bar", name: b.name, m: b.metrics })),
-  ].sort((a, b) => b.m.alpha_annual - a.m.alpha_annual);
+    ...state.teams.map((t) => ({ kind: "team", name: t.team, rank: t.rank, score: t.score, m: t.metrics, a: t.agent, runs: t.attempts })),
+    ...state.baselines.map((b) => ({ kind: "bar", name: b.name, m: b.metrics })).sort((a, b) => b.m.alpha_annual - a.m.alpha_annual),
+  ];
   $("empty").hidden = state.teams.length > 0;
   for (const row of rows) {
     const tr = document.createElement("tr");
@@ -160,15 +177,16 @@ function renderBoard() {
     cell(tr, row.kind === "bar" ? "" : row.rank);
     const name = cell(tr, "");
     if (row.kind === "team") {
-      const index = picked.indexOf(row.name);
-      if (index >= 0) { const dot = document.createElement("span"); dot.className = "swatch"; dot.style.background = color(COLORS[index % 5]); name.appendChild(dot); }
+      if (picked.includes(row.name)) { const dot = document.createElement("span"); dot.className = "swatch"; dot.style.background = teamColor(row.name); name.appendChild(dot); }
       tr.addEventListener("click", () => toggle(row.name));
     }
     name.appendChild(document.createTextNode(row.name));
+    cell(tr, row.kind === "team" ? row.score.toFixed(1) : "");
     cell(tr, pct(row.m.alpha_annual, 1, true), row.kind === "team" ? cls(row.m.alpha_annual) : "");
     const t = cell(tr, row.kind === "bar" && row.name.startsWith("The market") ? "" : row.m.alpha_t.toFixed(2));
     if (row.m.reliable) { t.textContent += " "; const tick = document.createElement("span"); tick.className = "tick"; tick.textContent = "✓"; t.appendChild(tick); }
     cell(tr, row.m.beta.toFixed(2));
+    cell(tr, row.m.sharpe === null ? "n/a" : row.m.sharpe.toFixed(2));
     cell(tr, pct(row.m.total_return, 0), cls(row.m.total_return));
     cell(tr, pct(row.m.max_drawdown, 1), cls(row.m.max_drawdown));
     cell(tr, row.m.days_over_limit === null ? "n/a" : row.m.days_over_limit);
@@ -181,8 +199,77 @@ function renderBoard() {
 }
 
 function toggle(name) {
-  picked = picked.includes(name) ? picked.filter((n) => n !== name) : [...picked, name].slice(-5);
-  renderBoard(); drawChart();
+  picked = picked.includes(name) ? picked.filter((n) => n !== name) : [...picked, name];
+  redraw();
+}
+
+function redraw() {
+  renderBoard(); renderChips(); drawChart(); renderHoldings();
+}
+
+function renderChips() {
+  const box = $("chips"), names = state.teams.map((t) => t.team), key = JSON.stringify([...names].sort());
+  if (chipKey !== key) {
+    chipKey = key;
+    const chips = names.map((name) => {
+      const chip = document.createElement("button");
+      chip.type = "button"; chip.className = "ghost"; chip.dataset.team = name;
+      const dot = document.createElement("span"); dot.className = "swatch"; dot.style.background = teamColor(name); chip.appendChild(dot);
+      chip.appendChild(document.createTextNode(name));
+      chip.addEventListener("click", () => toggle(name));
+      return chip;
+    });
+    const showAll = document.createElement("button"); showAll.type = "button"; showAll.className = "ghost"; showAll.textContent = "Show all";
+    showAll.addEventListener("click", () => { picked = [...names]; redraw(); });
+    const hideAll = document.createElement("button"); hideAll.type = "button"; hideAll.className = "ghost"; hideAll.textContent = "Hide all";
+    hideAll.addEventListener("click", () => { picked = []; redraw(); });
+    box.replaceChildren(...chips, showAll, hideAll);
+  }
+  for (const chip of box.querySelectorAll("button[data-team]")) chip.setAttribute("aria-pressed", String(picked.includes(chip.dataset.team)));
+}
+
+function teamRow(name) { return state.teams.find((t) => t.team === name); }
+
+function holdingsOf(name) {
+  const row = teamRow(name), list = row ? holdingsByEntry.get(row.id) : null;
+  return Array.isArray(list) ? list : null;
+}
+
+function loadHoldings(id) {
+  if (holdingsByEntry.has(id)) return;
+  holdingsByEntry.set(id, null);
+  api(`/api/entry/${id}/holdings`).then(
+    (body) => { holdingsByEntry.set(id, body.holdings || []); redraw(); },
+    () => holdingsByEntry.delete(id),
+  );
+}
+
+function renderHoldings() {
+  const card = $("holdings");
+  card.replaceChildren();
+  if (!picked.length) {
+    const note = document.createElement("p"); note.className = "muted"; note.textContent = "Turn a team on above to see its holdings.";
+    card.appendChild(note); return;
+  }
+  for (const name of picked) {
+    const row = teamRow(name);
+    if (!row) continue;
+    loadHoldings(row.id);
+    const list = holdingsByEntry.get(row.id), block = document.createElement("div"), head = document.createElement("div");
+    block.className = "run";
+    const dot = document.createElement("span"); dot.className = "swatch"; dot.style.background = teamColor(name); head.appendChild(dot);
+    const label = document.createElement("strong"); label.textContent = name; head.appendChild(label); block.appendChild(head);
+    const canvas = document.createElement("canvas"); canvas.className = "holdchart"; canvas.setAttribute("role", "img");
+    canvas.setAttribute("aria-label", `Holdings after each decision for ${name}, oldest on the left`);
+    const legend = document.createElement("div"); legend.className = "live";
+    if (Array.isArray(list) && !list.length) {
+      legend.textContent = "No holdings recorded for this run."; block.appendChild(legend);
+    } else {
+      block.append(canvas, legend);
+    }
+    card.appendChild(block);
+    if (Array.isArray(list) && list.length) drawHoldings(canvas, legend, list);
+  }
 }
 
 function drawChart() {
@@ -192,10 +279,10 @@ function drawChart() {
   const g = canvas.getContext("2d"); g.scale(ratio, ratio); g.clearRect(0, 0, width, height);
   let series = [
     ...state.baselines.map((b, i) => ({ name: b.name, bar: true, dash: [[6, 4], [2, 3], [10, 3, 2, 3]][i % 3], data: curves[b.name] || [] })),
-    ...picked.filter((n) => curves[n]).map((n, i) => ({ name: n, color: color(COLORS[i % 5]), data: curves[n] })),
+    ...picked.filter((n) => curves[n]).map((n) => ({ name: n, color: teamColor(n), data: curves[n], markers: holdingsOf(n) })),
   ];
   const running = mine && mine.entries.find((e) => e.status === "running" && e.progress && e.progress.curve && e.progress.curve.length);
-  if (running) series.push({ name: `${mine.team || "Your run"} (live)`, color: color("--accent"), data: running.progress.curve, live: running.progress.feed });
+  if (running) series.push({ name: `${mine.team || "Your run"} (live)`, color: color("--accent"), data: running.progress.curve, markers: running.progress.feed });
   series = series.filter((s) => s.data.length);
   const left = 40, bottom = 22, top = 8, right = 8;
   if (!series.length) return;
@@ -217,9 +304,11 @@ function drawChart() {
     g.stroke();
   }
   g.setLineDash([]);
-  for (const s of series.filter((t) => t.live)) {
-    for (const d of s.live) {
-      const before = s.data.filter((p) => p[0] <= d.date); if (!before.length) continue;
+  let marked = false;
+  const marks = (data, feed) => {
+    for (const d of feed) {
+      const before = data.filter((p) => p[0] <= d.date); if (!before.length) continue;
+      marked = true;
       const p = before[before.length - 1], px = x(p[0]), py = y(p[1]);
       const kind = d.outcome === "held" ? "held" : d.direction;
       const fill = kind === "held" ? color("--bad") : kind === "cut" ? color("--bad") : kind === "add" ? color("--good") : color("--muted");
@@ -230,14 +319,15 @@ function drawChart() {
       else { g.arc(px, py, kind === "held" ? 4 : 2.5, 0, Math.PI * 2); }
       g.fillStyle = fill; g.fill(); g.strokeStyle = color("--card"); g.lineWidth = 1.2; g.stroke();
     }
-  }
+  };
+  for (const s of series) if (s.markers) marks(s.data, s.markers);
   const legend = $("legend"); legend.replaceChildren();
   for (const s of series) {
     const item = document.createElement("span"); const dot = document.createElement("span");
     dot.className = "swatch"; dot.style.background = s.bar ? color("--muted") : s.color; item.appendChild(dot);
     item.appendChild(document.createTextNode(s.name)); legend.appendChild(item);
   }
-  if (running) { const note = document.createElement("span"); note.textContent = "Down triangle: sold tech. Up triangle: bought tech. Square: swapped within calm or tech. Grey dot: no change. Red dot: held."; legend.appendChild(note); }
+  if (marked) { const note = document.createElement("span"); note.textContent = "Down triangle: sold tech. Up triangle: bought tech. Square: swapped within calm or tech. Grey dot: no change. Red dot: held."; legend.appendChild(note); }
 }
 
 async function refresh() {
@@ -245,11 +335,11 @@ async function refresh() {
     state = await api("/api/state");
     curves = await api("/api/curves");
   } catch (e) { return; }
-  if (picked === null) picked = state.teams.slice(0, 3).map((t) => t.team);
+  if (picked === null) picked = state.teams.slice(0, 5).map((t) => t.team);
   picked = picked.filter((n) => curves[n]);
   const status = $("status"); status.textContent = state.open ? "Open" : "Closed"; status.className = "pill " + (state.open ? "open" : "closed");
   $("from").textContent = state.scored_from.slice(0, 4);
-  renderBoard(); drawChart();
+  redraw();
   if (mine) await loadMine(true);
   const active = state.busy > 0;
   clearTimeout(timer); timer = setTimeout(refresh, active ? 3000 : 15000);
@@ -379,7 +469,7 @@ $("form").addEventListener("submit", async (event) => {
 });
 $("code").value = store("arena-code"); $("team").value = store("arena-team"); $("guidance").value = store("arena-guidance");
 $("count").textContent = `${$("guidance").value.length} / 1000`;
-window.addEventListener("resize", () => state && drawChart());
+window.addEventListener("resize", () => state && redraw());
 refresh().then(() => { if (store("arena-code")) loadMine(true); });
 </script>
 </body>
